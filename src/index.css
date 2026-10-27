@@ -1,0 +1,345 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --color-gold-100: #fff4cf;
+  --color-gold-300: #f5d77a;
+  --color-gold-400: #e8bd4f;
+  --color-gold-500: #d19b2c;
+  --color-gold-700: #8a5d12;
+  --color-navy-950: #030520;
+  --color-navy-900: #060a33;
+  --color-navy-800: #0b1250;
+  --color-navy-700: #121c74;
+}
+
+:root {
+  --bg0: #02041a;
+  --bg1: #0a1150;
+  --bg2: #1a1f8c;
+  --beam: 90, 120, 255;
+  --beam2: 150, 80, 255;
+  --line: 120, 160, 255;
+  --box-top: #1b2a9a;
+  --box-bot: #070c3c;
+  --select-top: #ffb43a;
+  --select-bot: #d86a00;
+  color-scheme: dark;
+}
+
+[data-theme='royal'] {
+  --bg0: #08021a;
+  --bg1: #1d0b52;
+  --bg2: #3b1395;
+  --beam: 150, 90, 255;
+  --beam2: 255, 90, 200;
+  --line: 190, 140, 255;
+  --box-top: #3a1a9a;
+  --box-bot: #12063c;
+}
+
+[data-theme='emerald'] {
+  --bg0: #01110f;
+  --bg1: #053a3a;
+  --bg2: #0b6a63;
+  --beam: 70, 230, 200;
+  --beam2: 90, 160, 255;
+  --line: 120, 240, 220;
+  --box-top: #0d5a66;
+  --box-bot: #032228;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg0);
+  color: #fff;
+  font-family: var(--font-body);
+}
+
+body {
+  overflow: hidden;
+}
+
+body.admin-body {
+  overflow: auto;
+  background: #070a24;
+}
+
+/* ---------- Game stage ---------- */
+
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: center center;
+  overflow: hidden;
+  background: var(--bg0);
+}
+
+.presentation,
+.presentation * {
+  cursor: none !important;
+}
+
+.anim-paused,
+.anim-paused * {
+  animation-play-state: paused !important;
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+/* ---------- Studio background ---------- */
+
+.studio-base {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 38% 42%, rgba(var(--beam), 0.35), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, rgba(var(--beam2), 0.35), transparent 70%),
+    radial-gradient(ellipse at 50% 30%, var(--bg2) 0%, var(--bg1) 35%, var(--bg0) 75%);
+}
+
+.studio-beams {
+  position: absolute;
+  left: 38%;
+  top: 40%;
+  width: 3200px;
+  height: 3200px;
+  margin: -1600px 0 0 -1600px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(var(--beam), 0.16) 0deg 4deg,
+    transparent 4deg 18deg
+  );
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.35) 30%, transparent 60%);
+  animation: spin 140s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.studio-beams.reverse {
+  background: repeating-conic-gradient(
+    from 7deg,
+    rgba(var(--beam2), 0.1) 0deg 2deg,
+    transparent 2deg 24deg
+  );
+  animation: spin 200s linear infinite reverse;
+}
+
+.spotlight {
+  position: absolute;
+  top: -200px;
+  width: 360px;
+  height: 1500px;
+  transform-origin: 50% 0;
+  background: linear-gradient(to bottom, rgba(var(--beam), 0.32), rgba(var(--beam), 0.06) 55%, transparent 80%);
+  filter: blur(18px);
+  mix-blend-mode: screen;
+  clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+}
+
+.spotlight.left {
+  left: 120px;
+  animation: sweepL 13s ease-in-out infinite alternate;
+}
+
+.spotlight.right {
+  left: 1080px;
+  animation: sweepR 15s ease-in-out infinite alternate;
+}
+
+.studio-floor {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -260px;
+  height: 520px;
+  background: radial-gradient(ellipse at 50% 30%, rgba(var(--beam), 0.45), transparent 65%);
+  filter: blur(10px);
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 45% 45%, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
+}
+
+.mood-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sweepL {
+  from {
+    transform: rotate(-24deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes sweepR {
+  from {
+    transform: rotate(20deg);
+  }
+  to {
+    transform: rotate(-16deg);
+  }
+}
+
+/* ---------- Hexagonal boxes ---------- */
+
+.hex {
+  --cut: 46px;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% 50%, calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 50%);
+}
+
+.hex-frame {
+  position: relative;
+  padding: 3px;
+  background: linear-gradient(180deg, #d8e2ff 0%, #6f86ff 30%, #2a3cb8 55%, #a9b8ff 100%);
+}
+
+.hex-fill {
+  --cut: 44px;
+  position: relative;
+  height: 100%;
+  background: linear-gradient(180deg, var(--box-top) 0%, var(--box-bot) 55%, var(--box-bot) 100%);
+  overflow: hidden;
+}
+
+.hex-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 52% 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02));
+  pointer-events: none;
+}
+
+.hex-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  left: -40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: sweep 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sweep {
+  0% {
+    left: -40%;
+  }
+  45%,
+  100% {
+    left: 130%;
+  }
+}
+
+.state-selected .hex-frame,
+.state-locked .hex-frame {
+  background: linear-gradient(180deg, #fff1c4, #ffb02e 45%, #b35a00);
+}
+
+.state-selected .hex-fill,
+.state-locked .hex-fill {
+  background: linear-gradient(180deg, var(--select-top) 0%, var(--select-bot) 60%, #9a4600 100%);
+}
+
+.state-correct .hex-frame {
+  background: linear-gradient(180deg, #e2ffe6, #36e070 45%, #0b7a33);
+}
+
+.state-correct .hex-fill {
+  background: linear-gradient(180deg, #3fe27a 0%, #0f9b45 60%, #06672b 100%);
+}
+
+.state-wrong .hex-frame {
+  background: linear-gradient(180deg, #ffd9d9, #ff4a4a 45%, #8f0b0b);
+}
+
+.state-wrong .hex-fill {
+  background: linear-gradient(180deg, #ff5a5a 0%, #c41515 60%, #7c0606 100%);
+}
+
+.state-locked {
+  animation: lockPulse 1.1s ease-in-out infinite;
+}
+
+.state-correct {
+  animation: correctBlink 0.42s ease-in-out 5;
+}
+
+@keyframes lockPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 10px rgba(255, 160, 30, 0.6)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 30px rgba(255, 170, 40, 1)) brightness(1.15);
+  }
+}
+
+@keyframes correctBlink {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 26px rgba(60, 255, 120, 0.9)) brightness(1.15);
+  }
+  50% {
+    filter: drop-shadow(0 0 4px rgba(60, 255, 120, 0.3)) brightness(0.8);
+  }
+}
+
+.connector-line {
+  position: absolute;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(var(--line), 0.9) 12%, rgba(var(--line), 0.9) 88%, transparent);
+  box-shadow: 0 0 12px rgba(var(--line), 0.8);
+}
+
+.gold-text {
+  background: linear-gradient(180deg, #fff6d5 0%, #f6d27a 40%, #d39a2a 60%, #ffe8a3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-glow {
+  text-shadow: 0 0 18px rgba(var(--line), 0.6), 0 2px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Admin ---------- */
+
+.admin-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: #263070;
+  border-radius: 8px;
+}
+
+input[type='range'] {
+  accent-color: #e8bd4f;
+}
