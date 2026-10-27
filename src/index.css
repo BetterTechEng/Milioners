@@ -79,6 +79,7 @@ body.admin-body {
   height: 1080px;
   transform-origin: center center;
   overflow: hidden;
+  overflow: clip;
   background: var(--bg0);
 }
 

@@ -11,8 +11,13 @@ export function Stage({ children, className = '' }: { children: ReactNode; class
     return () => window.removeEventListener('resize', fit);
   }, []);
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
-      <div className={`stage ${className}`} style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
+    <div className="fixed inset-0 overflow-hidden bg-black" onScroll={(e) => e.currentTarget.scrollTo(0, 0)}>
+      <div
+        className={`stage ${className}`}
+        style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
+        // The stage must never scroll, even if focus moves to a partly hidden element.
+        onScroll={(e) => e.currentTarget.scrollTo(0, 0)}
+      >
         {children}
       </div>
     </div>
