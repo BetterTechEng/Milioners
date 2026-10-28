@@ -104,6 +104,14 @@ export function SettingsTab({ data }: { data: AppData }) {
       </Card>
 
       <div className="space-y-4">
+        <Card title="Głośność">
+          <div className="space-y-2">
+            <Slider label="Główna" value={s.volume.master} onChange={(v) => set({ volume: { ...s.volume, master: v } })} />
+            <Slider label="Muzyka" value={s.volume.music} onChange={(v) => set({ volume: { ...s.volume, music: v } })} />
+            <Slider label="Wideo" value={s.volume.video} onChange={(v) => set({ volume: { ...s.volume, video: v } })} />
+          </div>
+        </Card>
+
         <Card title="Koła ratunkowe i telefon">
           <Toggle label="50:50" checked={s.lifelinesEnabled.fifty} onChange={(v) => set({ lifelinesEnabled: { ...s.lifelinesEnabled, fifty: v } })} />
           <Toggle label="Telefon do przyjaciela" checked={s.lifelinesEnabled.phone} onChange={(v) => set({ lifelinesEnabled: { ...s.lifelinesEnabled, phone: v } })} />
@@ -115,18 +123,11 @@ export function SettingsTab({ data }: { data: AppData }) {
 
         <Card title="Przebieg i animacje">
           <Slider label="Szybkość animacji (mnożnik czasu)" value={s.animationSpeed} min={0.5} max={2} step={0.1} onChange={(v) => set({ animationSpeed: v })} format={(v) => `×${v.toFixed(1)}`} />
-          <Slider label="Dramatyczna pauza przed wynikiem" value={s.revealDelayMs} min={0} max={6000} step={100} onChange={(v) => set({ revealDelayMs: v })} format={(v) => `${(v / 1000).toFixed(1)} s`} />
-          <Field label="Domyślny moment filmu z odpowiedzią">
-            <select className={inputCls} value={s.videoTiming} onChange={(e) => set({ videoTiming: e.target.value as Settings['videoTiming'] })}>
-              <option value="before">Przed ujawnieniem wyniku</option>
-              <option value="after">Po ujawnieniu wyniku</option>
-            </select>
-          </Field>
           <div className="mt-2">
-            <Toggle label="Automatyczne przejścia" hint="Intro → pierwsze pytanie i poprawna odpowiedź → następne pytanie bez klikania. Domyślnie wyłączone." checked={s.autoTransitions} onChange={(v) => set({ autoTransitions: v })} />
+            <Toggle label="Automatyczne przejścia" hint="Intro → pierwsze pytanie i wynik odpowiedzi → następne pytanie bez klikania. Domyślnie wyłączone." checked={s.autoTransitions} onChange={(v) => set({ autoTransitions: v })} />
             <Toggle label="Tryb prezentacyjny" hint="Ukrywa kursor i podpowiedzi na ekranie gry." checked={s.presentationMode} onChange={(v) => set({ presentationMode: v })} />
             <Toggle label="Ogranicz animacje" hint="Wyłącza ruch tła i skraca animacje (dostępność)." checked={s.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
-            <Toggle label="Skróty klawiaturowe" hint="1–4 wybór, Enter zatwierdź, Spacja pauza, N dalej, R odkryj, V film, F pełny ekran, M muzyka." checked={s.shortcutsEnabled} onChange={(v) => set({ shortcutsEnabled: v })} />
+            <Toggle label="Skróty klawiaturowe" hint="1–4 wybór odpowiedzi, Spacja pauza, N start / następne pytanie, V film, F pełny ekran, M muzyka." checked={s.shortcutsEnabled} onChange={(v) => set({ shortcutsEnabled: v })} />
           </div>
         </Card>
       </div>

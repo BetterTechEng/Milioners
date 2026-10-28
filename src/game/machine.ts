@@ -7,14 +7,12 @@ import type {
   Phase,
   RoundResult,
 } from '../types';
-import {
-  currentWinnings,
-  guaranteedPrize,
-  isThreshold,
-  levelCount,
-  playQuestions,
-  phoneRemainingMs,
-} from './rules';
+import { currentWinnings, isThreshold, levelCount, playQuestions, phoneRemainingMs } from './rules';
+
+/** Fixed show timings (ms), counted from the event that starts them. */
+export const REVEAL_AFTER_MS = 6000;
+export const FIFTY_AFTER_MS = 8000;
+export const AUDIENCE_AFTER_MS = 32000;
 
 export type Action =
   | { type: 'START_GAME'; participant?: string }
@@ -24,21 +22,17 @@ export type Action =
   | { type: 'PREV_QUESTION' }
   | { type: 'SKIP_QUESTION' }
   | { type: 'SELECT'; answer: AnswerIndex }
-  | { type: 'LOCK' }
-  | { type: 'REVEAL' }
   | { type: 'RESOLVE' }
-  | { type: 'FINISH_WIN' }
   | { type: 'END_GAME' }
   | { type: 'PLAY_VIDEO'; which: 'answer' | 'question' }
   | { type: 'VIDEO_CONTROL'; playing?: boolean; seekTo?: number; maximized?: boolean }
   | { type: 'VIDEO_ENDED' }
   | { type: 'CLOSE_VIDEO' }
-  | { type: 'FIFTY'; removed: AnswerIndex[] }
+  | { type: 'FIFTY_START'; removed: AnswerIndex[] }
+  | { type: 'FIFTY_APPLY' }
   | { type: 'AUDIENCE_START'; results: [number, number, number, number] }
-  | { type: 'AUDIENCE_SET'; results: [number, number, number, number] }
   | { type: 'AUDIENCE_SHOW' }
   | { type: 'PHONE_START' }
-  | { type: 'PHONE_CONNECT' }
   | { type: 'PHONE_TIMER'; cmd: 'start' | 'pause' | 'reset' }
   | { type: 'PHONE_END' }
   | { type: 'LIFELINE_CLOSE' }
@@ -74,26 +68,15 @@ export function initialGame(participant = ''): GameState {
     finalPrize: null,
     endReason: null,
     pausedAt: 0,
+    lifelineAt: 0,
+    fiftyPending: null,
   };
 }
 
-const ACTIONS_WHILE_PAUSED = new Set<Action['type']>([
-  'RESUME',
-  'TOGGLE_MUSIC',
-  'NEW_GAME',
-  'LOAD_GAME',
-  'VIDEO_CONTROL',
-]);
+const ACTIONS_WHILE_PAUSED = new Set<Action['type']>(['RESUME', 'TOGGLE_MUSIC', 'NEW_GAME', 'LOAD_GAME', 'VIDEO_CONTROL']);
 
 /** Phases where the current question is on screen and can be changed by the host. */
-const QUESTION_PHASES: Phase[] = [
-  'QUESTION_INTRO',
-  'QUESTION_ACTIVE',
-  'ANSWER_SELECTED',
-  'ANSWER_LOCKED',
-  'ANSWER_CORRECT',
-  'ANSWER_INCORRECT',
-];
+const QUESTION_PHASES: Phase[] = ['QUESTION_INTRO', 'QUESTION_ACTIVE', 'ANSWER_LOCKED', 'ANSWER_CORRECT', 'ANSWER_INCORRECT'];
 
 function emit(g: GameState, type: GameEventType, data?: Record<string, unknown>): GameState {
   const seq = g.eventSeq + 1;
@@ -104,6 +87,7 @@ function toPhase(g: GameState, phase: Phase): GameState {
   return { ...g, phase, phaseStartedAt: Date.now() };
 }
 
+/** Clears everything that belongs to the previous question (lifeline overlays, pending timers, video). */
 function freshQuestion(g: GameState, index: number): GameState {
   return {
     ...g,
@@ -116,6 +100,8 @@ function freshQuestion(g: GameState, index: number): GameState {
     video: null,
     videoWatched: false,
     videoReturnPhase: null,
+    lifelineAt: 0,
+    fiftyPending: null,
   };
 }
 
@@ -125,12 +111,12 @@ function setResult(results: RoundResult[], r: RoundResult): RoundResult[] {
 
 function lifelineAllowed(data: AppData, id: LifelineId): boolean {
   const g = data.game;
-  return (
-    data.settings.lifelinesEnabled[id] &&
-    !g.lifelinesUsed[id] &&
-    g.activeLifeline === null &&
-    (g.phase === 'QUESTION_ACTIVE' || g.phase === 'ANSWER_SELECTED')
-  );
+  return data.settings.lifelinesEnabled[id] && !g.lifelinesUsed[id] && g.activeLifeline === null && g.phase === 'QUESTION_ACTIVE';
+}
+
+function finishGame(data: AppData, g: GameState): GameState {
+  const prize = currentWinnings(data.questions, data.settings, g.results);
+  return emit(toPhase({ ...g, finalPrize: prize, endReason: null, activeLifeline: null }, 'GAME_WON'), 'won', { prize });
 }
 
 /** Returns true when the action is valid in the current state. Used to enable buttons. */
@@ -157,57 +143,48 @@ export function reduceGame(data: AppData, action: Action): GameState {
     }
 
     case 'NEXT_QUESTION': {
-      if (g.phase === 'INTRO') return emit(toPhase(freshQuestion(g, 0), 'QUESTION_INTRO'), 'questionIn');
-      if (g.testMode && (g.phase === 'ANSWER_CORRECT' || g.phase === 'ANSWER_INCORRECT')) {
-        return toPhase({ ...initialGame(g.participant), musicOn: g.musicOn, eventSeq: g.eventSeq }, 'IDLE');
+      if (g.phase === 'INTRO') return emit(toPhase(freshQuestion(g, 0), 'QUESTION_INTRO'), 'questionIn', { source: 'first' });
+      if (g.phase !== 'ANSWER_CORRECT' && g.phase !== 'ANSWER_INCORRECT') return g;
+      if (g.testMode) {
+        return emit({ ...initialGame(g.participant), musicOn: g.musicOn, eventSeq: g.eventSeq }, 'reset');
       }
-      if (g.phase === 'ANSWER_CORRECT' || g.phase === 'ANSWER_INCORRECT') {
-        if (g.index >= total - 1) return g;
-        return emit(toPhase(g, 'QUESTION_COMPLETED'), 'next');
-      }
-      return g;
+      // A wrong answer never ends the game; after the last question the show ends.
+      if (g.index >= total - 1) return finishGame(data, g);
+      return emit(toPhase(g, 'QUESTION_COMPLETED'), 'next');
     }
 
     case 'ANSWERS_SHOWN':
       if (g.phase !== 'QUESTION_INTRO') return g;
-      return toPhase(g, 'QUESTION_ACTIVE');
+      return emit(toPhase(g, 'QUESTION_ACTIVE'), 'questionActive');
 
     case 'ADVANCE': {
       if (g.phase !== 'QUESTION_COMPLETED') return g;
       const index = Math.min(g.index + 1, total - 1);
-      return emit(toPhase(freshQuestion(g, index), 'QUESTION_INTRO'), 'questionIn');
+      return emit(toPhase(freshQuestion(g, index), 'QUESTION_INTRO'), 'questionIn', { source: 'advance' });
     }
 
     case 'PREV_QUESTION': {
       if (!QUESTION_PHASES.includes(g.phase) || g.index === 0 || g.testMode) return g;
       const index = g.index - 1;
       const results = g.results.filter((r) => r.index < index);
-      return emit(toPhase({ ...freshQuestion(g, index), results }, 'QUESTION_INTRO'), 'questionIn');
+      return emit(toPhase({ ...freshQuestion(g, index), results }, 'QUESTION_INTRO'), 'questionIn', { source: 'prev' });
     }
 
     case 'SKIP_QUESTION': {
-      const skippable: Phase[] = ['QUESTION_INTRO', 'QUESTION_ACTIVE', 'ANSWER_SELECTED', 'ANSWER_LOCKED'];
+      const skippable: Phase[] = ['QUESTION_INTRO', 'QUESTION_ACTIVE', 'ANSWER_LOCKED'];
       if (!skippable.includes(g.phase) || g.index >= total - 1 || g.testMode || !q) return g;
       const results = setResult(g.results, { questionId: q.id, index: g.index, outcome: 'skipped', answer: null });
-      return emit(toPhase({ ...g, results, activeLifeline: null, video: null }, 'QUESTION_COMPLETED'), 'next');
+      return emit(toPhase({ ...freshQuestion(g, g.index), results }, 'QUESTION_COMPLETED'), 'next');
     }
 
+    // Clicking an answer locks it at once; it cannot be changed afterwards.
     case 'SELECT': {
-      if (g.phase !== 'QUESTION_ACTIVE' && g.phase !== 'ANSWER_SELECTED') return g;
-      if (g.activeLifeline || g.removed.includes(action.answer) || g.selected === action.answer) return g;
-      return emit(toPhase({ ...g, selected: action.answer }, 'ANSWER_SELECTED'), 'select', { answer: action.answer });
+      if (g.phase !== 'QUESTION_ACTIVE' || g.activeLifeline || g.removed.includes(action.answer)) return g;
+      return emit(toPhase({ ...g, selected: action.answer }, 'ANSWER_LOCKED'), 'lock', { answer: action.answer });
     }
-
-    case 'LOCK':
-      if (g.phase !== 'ANSWER_SELECTED' || g.selected === null || g.activeLifeline) return g;
-      return emit(toPhase(g, 'ANSWER_LOCKED'), 'lock', { answer: g.selected });
-
-    case 'REVEAL':
-      if (g.phase !== 'ANSWER_LOCKED' || g.selected === null) return g;
-      return emit(toPhase(g, 'ANSWER_REVEAL'), 'reveal');
 
     case 'RESOLVE': {
-      if (g.phase !== 'ANSWER_REVEAL' || g.selected === null || !q) return g;
+      if (g.phase !== 'ANSWER_LOCKED' || g.selected === null || !q) return g;
       const correct = g.selected === q.correct;
       const results = setResult(g.results, {
         questionId: q.id,
@@ -217,43 +194,25 @@ export function reduceGame(data: AppData, action: Action): GameState {
       });
       const next = toPhase({ ...g, results }, correct ? 'ANSWER_CORRECT' : 'ANSWER_INCORRECT');
       if (!correct) return emit(next, 'incorrect', { correct: q.correct, selected: g.selected });
-      const last = g.index >= total - 1;
-      const type: GameEventType = last ? 'correct' : isThreshold(data.settings, g.index) ? 'threshold' : 'correct';
-      return emit(next, type, { level: g.index, last });
+      return emit(next, isThreshold(data.settings, g.index) && !g.testMode ? 'threshold' : 'correct', { level: g.index });
     }
 
-    case 'FINISH_WIN': {
-      if (g.phase !== 'ANSWER_CORRECT' || g.index < total - 1 || g.testMode) return g;
-      const prize = currentWinnings(data.questions, data.settings, g.results);
-      return emit(toPhase({ ...g, finalPrize: prize, endReason: null }, 'GAME_WON'), 'won', { prize });
-    }
-
+    // The player may walk away with the current winnings.
     case 'END_GAME': {
       if (g.testMode) return g;
-      if (g.phase === 'ANSWER_INCORRECT') {
-        const prize = guaranteedPrize(data.questions, data.settings, g.results);
-        return emit(toPhase({ ...g, finalPrize: prize, endReason: 'wrong' }, 'GAME_LOST'), 'lost', { prize });
-      }
-      // Player walks away with current winnings before locking an answer.
-      if (g.phase === 'QUESTION_ACTIVE' || g.phase === 'ANSWER_SELECTED' || g.phase === 'ANSWER_CORRECT') {
-        const prize = currentWinnings(data.questions, data.settings, g.results);
-        return emit(
-          toPhase({ ...g, finalPrize: prize, endReason: 'stopped', activeLifeline: null }, 'GAME_LOST'),
-          'lost',
-          { prize, stopped: true },
-        );
-      }
-      return g;
+      if (g.phase !== 'QUESTION_ACTIVE' && g.phase !== 'ANSWER_CORRECT' && g.phase !== 'ANSWER_INCORRECT') return g;
+      if (g.activeLifeline) return g;
+      const prize = currentWinnings(data.questions, data.settings, g.results);
+      return emit(toPhase({ ...g, finalPrize: prize, endReason: 'stopped' }, 'GAME_LOST'), 'lost', { prize, stopped: true });
     }
 
     case 'PLAY_VIDEO': {
       if (!q || g.activeLifeline) return g;
       const ref = action.which === 'answer' ? q.answerVideo : q.video;
       if (!ref) return g;
+      // The answer is revealed automatically 6 s after the click, so the answer video plays after the reveal.
       const allowed: Phase[] =
-        action.which === 'answer'
-          ? ['ANSWER_LOCKED', 'ANSWER_CORRECT', 'ANSWER_INCORRECT']
-          : ['QUESTION_ACTIVE', 'ANSWER_SELECTED', 'ANSWER_LOCKED', 'ANSWER_CORRECT', 'ANSWER_INCORRECT'];
+        action.which === 'answer' ? ['ANSWER_CORRECT', 'ANSWER_INCORRECT'] : ['QUESTION_ACTIVE', 'ANSWER_CORRECT', 'ANSWER_INCORRECT'];
       if (!allowed.includes(g.phase)) return g;
       return emit(
         toPhase(
@@ -290,20 +249,28 @@ export function reduceGame(data: AppData, action: Action): GameState {
       if (g.phase !== 'VIDEO_PLAYING' || !g.video) return g;
       const watched = g.video.which === 'answer' ? true : g.videoWatched;
       return emit(
-        toPhase({ ...g, video: null, videoWatched: watched, videoReturnPhase: null }, g.videoReturnPhase ?? 'ANSWER_LOCKED'),
+        toPhase({ ...g, video: null, videoWatched: watched, videoReturnPhase: null }, g.videoReturnPhase ?? 'ANSWER_CORRECT'),
         'videoEnd',
       );
     }
 
-    case 'FIFTY': {
+    // 50:50 plays its melody first; the two wrong answers disappear 8 s later.
+    case 'FIFTY_START': {
       if (!lifelineAllowed(data, 'fifty') || !q) return g;
       const removed = action.removed.filter((a) => a !== q.correct).slice(0, 2);
       if (removed.length !== 2) return g;
-      const selected = g.selected !== null && removed.includes(g.selected) ? null : g.selected;
-      const next = { ...g, removed, selected, lifelinesUsed: { ...g.lifelinesUsed, fifty: true } };
-      return emit(toPhase(next, selected === null ? 'QUESTION_ACTIVE' : g.phase), 'fifty', { removed });
+      return emit(
+        { ...g, activeLifeline: 'fifty', fiftyPending: removed, lifelineAt: Date.now(), lifelinesUsed: { ...g.lifelinesUsed, fifty: true } },
+        'fifty',
+      );
     }
 
+    case 'FIFTY_APPLY': {
+      if (g.activeLifeline !== 'fifty' || !g.fiftyPending) return g;
+      return emit({ ...g, removed: g.fiftyPending, fiftyPending: null, activeLifeline: null }, 'fiftyApplied', { removed: g.fiftyPending });
+    }
+
+    // Audience: the melody plays and the results appear 32 s later.
     case 'AUDIENCE_START': {
       if (!lifelineAllowed(data, 'audience')) return g;
       return emit(
@@ -311,41 +278,33 @@ export function reduceGame(data: AppData, action: Action): GameState {
           ...g,
           activeLifeline: 'audience',
           audience: { status: 'voting', results: action.results },
+          lifelineAt: Date.now(),
           lifelinesUsed: { ...g.lifelinesUsed, audience: true },
         },
         'audienceStart',
       );
     }
 
-    case 'AUDIENCE_SET': {
-      if (g.activeLifeline !== 'audience' || !g.audience) return g;
-      return { ...g, audience: { ...g.audience, results: action.results } };
-    }
-
     case 'AUDIENCE_SHOW': {
       if (g.activeLifeline !== 'audience' || !g.audience || g.audience.status !== 'voting') return g;
-      const sum = g.audience.results.reduce((s, v) => s + v, 0);
-      if (sum !== 100) return g;
       return emit({ ...g, audience: { ...g.audience, status: 'results' } }, 'audienceResults');
     }
 
+    // Phone: the call connects straight away and the countdown starts.
     case 'PHONE_START': {
       if (!lifelineAllowed(data, 'phone')) return g;
-      const ms = data.settings.phoneSeconds * 1000;
+      const now = Date.now();
       return emit(
         {
           ...g,
           activeLifeline: 'phone',
-          phone: { status: 'calling', running: false, remainingMs: ms, startedAt: 0 },
+          phone: { status: 'connected', running: true, remainingMs: data.settings.phoneSeconds * 1000, startedAt: now },
+          lifelineAt: now,
           lifelinesUsed: { ...g.lifelinesUsed, phone: true },
         },
         'phoneStart',
       );
     }
-
-    case 'PHONE_CONNECT':
-      if (g.activeLifeline !== 'phone' || g.phone?.status !== 'calling') return g;
-      return emit({ ...g, phone: { ...g.phone, status: 'connected' } }, 'phoneConnected');
 
     case 'PHONE_TIMER': {
       const p = g.phone;
@@ -359,34 +318,25 @@ export function reduceGame(data: AppData, action: Action): GameState {
         if (!p.running) return g;
         return { ...g, phone: { ...p, running: false, remainingMs: phoneRemainingMs(p, now) } };
       }
-      return {
-        ...g,
-        phone: { ...p, running: false, remainingMs: data.settings.phoneSeconds * 1000, startedAt: 0 },
-      };
+      return { ...g, phone: { ...p, running: false, remainingMs: data.settings.phoneSeconds * 1000, startedAt: 0 } };
     }
 
     case 'PHONE_END': {
       const p = g.phone;
       if (g.activeLifeline !== 'phone' || !p || p.status === 'ended') return g;
-      return emit(
-        { ...g, phone: { ...p, status: 'ended', running: false, remainingMs: phoneRemainingMs(p, Date.now()) } },
-        'phoneEnd',
-      );
+      return emit({ ...g, phone: { ...p, status: 'ended', running: false, remainingMs: phoneRemainingMs(p, Date.now()) } }, 'phoneEnd');
     }
 
     case 'LIFELINE_CLOSE':
-      if (!g.activeLifeline) return g;
+      // 50:50 closes by itself after its 8 s sequence.
+      if (!g.activeLifeline || g.activeLifeline === 'fifty') return g;
       return emit({ ...g, activeLifeline: null, audience: null, phone: null }, 'lifelineClose');
 
     case 'PAUSE': {
       if (g.paused || g.phase === 'IDLE') return g;
       const now = Date.now();
-      const phone =
-        g.phone && g.phone.running
-          ? { ...g.phone, running: true, remainingMs: phoneRemainingMs(g.phone, now), startedAt: now }
-          : g.phone;
-      const video = g.video ? { ...g.video } : null;
-      return emit({ ...g, paused: true, pausedAt: now, phone, video }, 'pause');
+      const phone = g.phone && g.phone.running ? { ...g.phone, remainingMs: phoneRemainingMs(g.phone, now), startedAt: now } : g.phone;
+      return emit({ ...g, paused: true, pausedAt: now, phone }, 'pause');
     }
 
     case 'RESUME': {
@@ -394,21 +344,32 @@ export function reduceGame(data: AppData, action: Action): GameState {
       const now = Date.now();
       const shift = now - g.pausedAt;
       const phone = g.phone && g.phone.running ? { ...g.phone, startedAt: now } : g.phone;
-      return emit({ ...g, paused: false, pausedAt: 0, phaseStartedAt: g.phaseStartedAt + shift, phone }, 'resume');
+      return emit(
+        {
+          ...g,
+          paused: false,
+          pausedAt: 0,
+          phaseStartedAt: g.phaseStartedAt + shift,
+          lifelineAt: g.lifelineAt ? g.lifelineAt + shift : 0,
+          phone,
+        },
+        'resume',
+      );
     }
 
     case 'RESTART_QUESTION': {
       if (!QUESTION_PHASES.includes(g.phase) && g.phase !== 'VIDEO_PLAYING') return g;
       const results = g.results.filter((r) => r.index !== g.index);
+      // Lifelines stay used; answers removed by an applied 50:50 stay removed.
       const next = { ...freshQuestion(g, g.index), removed: g.removed, results };
-      return emit(toPhase(next, 'QUESTION_INTRO'), 'questionIn');
+      return emit(toPhase(next, 'QUESTION_INTRO'), 'questionIn', { source: 'restart' });
     }
 
     case 'NEW_GAME': {
       const next = initialGame(action.participant ?? g.participant);
       next.musicOn = g.musicOn;
       next.eventSeq = g.eventSeq;
-      return next;
+      return emit(next, 'reset');
     }
 
     case 'TOGGLE_MUSIC':
@@ -421,11 +382,11 @@ export function reduceGame(data: AppData, action: Action): GameState {
       next.eventSeq = g.eventSeq;
       next.testMode = true;
       next.index = action.index;
-      return emit(toPhase(next, 'QUESTION_INTRO'), 'questionIn');
+      return emit(toPhase(next, 'QUESTION_INTRO'), 'questionIn', { source: 'test' });
     }
 
     case 'LOAD_GAME':
-      return { ...action.game, eventSeq: Math.max(action.game.eventSeq, g.eventSeq), events: [] };
+      return emit({ ...initialGame(), ...action.game, eventSeq: Math.max(action.game.eventSeq, g.eventSeq), events: [] }, 'reset');
   }
 }
 

@@ -1,17 +1,16 @@
 # Milioners: teleturniej na żywo
 
-Gra w stylu telewizyjnego teleturnieju z pytaniami za coraz większe kwoty. Ma osobny **ekran gry** (telewizor, projektor) i **panel prowadzącego** (laptop), zsynchronizowane na żywo. Działa w całości w przeglądarce, bez backendu, kluczy API i płatnych usług.
+Gra w stylu telewizyjnego teleturnieju z pytaniami za coraz większe kwoty. Wszystko dzieje się na **jednej stronie**: uczestnik klika odpowiedzi i koła ratunkowe, a prowadzący steruje grą małymi przyciskami na dole ekranu. Działa w całości w przeglądarce, bez backendu, kluczy API i płatnych usług.
 
 **Wersja online:** https://bettertecheng.github.io/Milioners/
 
-## Szybki start (prowadzący)
+## Szybki start
 
-1. Otwórz stronę i wybierz **Panel prowadzącego**.
-2. Kliknij **Otwórz ekran gry**. Przeciągnij nowe okno na telewizor.
-3. Na ekranie gry kliknij **Włącz dźwięk i pełny ekran** (przeglądarka wymaga jednego kliknięcia, zanim odtworzy dźwięk).
-4. W panelu: **Start gry**, a potem prowadź grę przyciskiem **Następny krok** albo skrótami klawiszowymi.
-
-Oba okna muszą być otwarte **w tej samej przeglądarce na tym samym komputerze**. Synchronizują się przez BroadcastChannel, a jako zapas przez localStorage.
+1. Otwórz stronę na komputerze podłączonym do telewizora. Naciśnij **F** (pełny ekran).
+2. Na dole ekranu jest mały pasek prowadzącego. Kliknij **Start gry**, a potem **Pierwsze pytanie**.
+3. Uczestnik klika odpowiedź albo koło ratunkowe bezpośrednio na planszy.
+4. Po wyniku prowadzący klika **Następne pytanie**. Błędna odpowiedź nie kończy gry.
+5. Pytania, ustawienia i zapisy są pod przyciskiem **Menu** na pasku.
 
 ## Uruchomienie lokalne
 
@@ -22,7 +21,7 @@ npm install
 npm run dev
 ```
 
-Otwórz adres wypisany przez Vite. Ekran gry jest pod `#/screen`, panel pod `#/admin`.
+Otwórz adres wypisany przez Vite.
 
 | Cel | Komenda |
 |---|---|
@@ -34,35 +33,33 @@ Otwórz adres wypisany przez Vite. Ekran gry jest pod `#/screen`, panel pod `#/a
 
 ## Przebieg pytania
 
-1. **Prezentacja**: pytanie wjeżdża z dźwiękiem, odpowiedzi A, B, C, D pojawiają się po kolei, potem startuje muzyka napięcia.
-2. **Wybór** (1–4): pole świeci na pomarańczowo.
-3. **Zatwierdzenie** (Enter): pulsowanie pola, przyciemnienie pozostałych, mocniejsza muzyka.
-4. **Film z odpowiedzią** (V, opcjonalnie): muzyka się wycisza i otwiera się duży odtwarzacz. Po zakończeniu filmu gra wraca do pytania.
-5. **Ujawnienie** (R): dramatyczna pauza, potem zielone pole (sukces) albo czerwone pole i zielona poprawna odpowiedź (porażka).
-6. **Następne pytanie** (N) albo **Zakończ grę** po błędzie.
+1. **Prezentacja**: pytanie wjeżdża, odpowiedzi A, B, C, D pojawiają się po kolei.
+2. **Odpowiedź**: uczestnik klika odpowiedź (albo prowadzący naciska 1–4). Odpowiedź od razu się blokuje i nie da się jej zmienić.
+3. **Ujawnienie**: dokładnie 6 s po kliknięciu pole zmienia kolor na zielony albo czerwony, a przy błędzie poprawna odpowiedź świeci na zielono.
+4. **Dalej**: prowadzący klika **Następne pytanie**. Po ostatnim pytaniu przycisk zmienia się w **Zakończ teleturniej**.
 
-Gra pilnuje kolejności: nie da się ujawnić odpowiedzi przed zatwierdzeniem, wybrać usuniętej odpowiedzi ani użyć koła ratunkowego drugi raz. Ekran gry nie pokazuje poprawnej odpowiedzi przed ujawnieniem. Widzi ją tylko prowadzący w panelu.
+Przycisków nie da się uruchomić podwójnie: drugie szybkie kliknięcie jest ignorowane. Po przejściu do innego pytania wszystkie timery poprzedniego pytania są kasowane.
 
-## Skróty klawiszowe (panel prowadzącego)
+## Skróty klawiszowe
 
 | Klawisz | Akcja |
 |---|---|
-| 1 / 2 / 3 / 4 | Wybór odpowiedzi A / B / C / D |
-| Enter | Zatwierdzenie odpowiedzi |
+| 1 / 2 / 3 / 4 | Odpowiedź A / B / C / D |
 | Spacja | Pauza / wznowienie |
 | N | Start gry / następne pytanie |
-| R | Ujawnienie odpowiedzi |
-| V | Film z odpowiedzią |
-| F | Pełny ekran (w oknie gry działa zawsze; z panelu patrz ograniczenia) |
+| V | Film z odpowiedzią (po ujawnieniu) |
+| F | Pełny ekran |
 | M | Muzyka wł./wył. |
 
-Skróty nie działają podczas pisania w polach formularzy. Klawisze przechodzące do kolejnych etapów mają blokadę 0,6 s przed przypadkowym podwójnym naciśnięciem. Skróty wyłączysz w Ustawieniach.
+Skróty nie działają podczas pisania w polach formularzy ani przy otwartym menu. Wyłączysz je w Ustawieniach (F działa zawsze).
 
 ## Koła ratunkowe
 
-- **50:50**: usuwa dwie losowe błędne odpowiedzi.
-- **Pytanie do publiczności**: animacja głosowania, potem wykres. Wyniki generuje symulacja (poprawna odpowiedź zwykle wygrywa, przy trudnych pytaniach publiczność częściej się myli). Możesz też wpisać je ręcznie. Suma musi wynosić 100%.
-- **Telefon do przyjaciela**: wybieranie numeru i sygnał, potem licznik (domyślnie 30 s) ze startem, pauzą, wznowieniem, resetem i wcześniejszym zakończeniem. Ostatnie 5 sekund ma ostrzejsze sygnały.
+Uczestnik klika ikonę koła na górze planszy.
+
+- **50:50**: gra melodia, a dokładnie 8 s później znikają dwie błędne odpowiedzi.
+- **Pytanie do publiczności**: gra melodia, a dokładnie 32 s później pojawiają się wyniki A–D. Na razie są losowe i zawsze sumują się do 100%. Prowadzący zamyka okno przyciskiem na pasku.
+- **Telefon do przyjaciela**: gra melodia (raz) i od razu startuje 30-sekundowe odliczanie. Na pasku: pauza, reset, zakończenie rozmowy, zamknięcie.
 
 ## Pytania
 
@@ -88,15 +85,25 @@ Format JSON:
 
 `correct` przyjmuje `0–3` albo `"A"–"D"`. Pola `prize`, `image`, `video`, `answerVideo`, `hostComment` i `videoTiming` są opcjonalne.
 
-## Audio
+## Muzyka
 
-Cała muzyka i efekty są **oryginalne i syntezowane na żywo przez Web Audio API**, bez plików z nagraniami. Moduły:
+Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna melodia: nowa zatrzymuje poprzednią. W pętli grają tylko muzyki napięcia.
 
-- `src/audio/engine.ts`: graf audio (szyny muzyki i efektów, pogłos, kompresor, pauza przez zawieszenie AudioContext).
-- `src/audio/synth.ts`: instrumenty (pady, smyczki, bas, kotły, dzwony, blacha, werble, risery, uderzenia, tłum).
-- `src/audio/music.ts`: sekwencer z płynnymi przejściami. Cztery poziomy napięcia (pytania 1–5, 6–10, 11–14, finał), napięcie po zatwierdzeniu, muzyka sukcesu, porażki, progu gwarantowanego, intro, zwycięstwa i lobby.
-- `src/audio/sfx.ts`: efekty w grupach, które się nie nakładają.
-- `src/audio/AudioManager.ts`: centralny menedżer, który zamienia zdarzenia gry na muzykę i efekty.
+| Zdarzenie | Plik |
+|---|---|
+| Otwarcie strony (jeśli przeglądarka zablokuje, przy pierwszym kliknięciu) | `candidates-arriving.mp3` |
+| Start gry i koniec teleturnieju | `main-theme.mp3` |
+| Przejście do pierwszego pytania | `lets-play.mp3` |
+| „Następne pytanie” (kolejne pytania) | `new-question.mp3` |
+| Pytania 6–8, w pętli do kliknięcia odpowiedzi | `music-64000.mp3` |
+| Pytania 9–15, w pętli do kliknięcia odpowiedzi | `music-500000.mp3` |
+| Kliknięcie odpowiedzi | `final-answer.mp3` |
+| 6 s po kliknięciu | `correct-answer.mp3` albo `wrong-answer.mp3` |
+| 50:50 | `fastest-finger.mp3` |
+| Pytanie do publiczności | `ask-the-audience.mp3` |
+| Telefon do przyjaciela | `phone-a-friend.mp3` |
+
+Muzyka napięcia wraca po zamknięciu koła ratunkowego (po 50:50 — gdy skończy się jego melodia). Logika jest w `src/audio/AudioManager.ts`.
 
 ## Architektura
 
@@ -106,20 +113,19 @@ src/
   data/defaults.ts        domyślne ustawienia i 15 przykładowych pytań
   game/machine.ts         maszyna stanów (reducer z kontrolą przejść)
   game/rules.ts           drabinka, progi, 50:50, symulacja publiczności, timingi
-  game/store.ts           wspólny stan + synchronizacja okien (BroadcastChannel)
+  game/store.ts           wspólny stan, autozapis
   game/storage.ts         localStorage (stan, zapisy) i IndexedDB (pliki wideo/obrazy)
-  audio/                  system dźwięku
-  screen/                 ekran gry (studio, tablica, drabinka, nakładki, wideo)
-  admin/                  panel prowadzącego (sterowanie, pytania, ustawienia, zapisy)
+  audio/AudioManager.ts   odtwarzanie MP3 według zdarzeń gry
+  screen/                 plansza (studio, odpowiedzi, drabinka, nakładki, wideo)
+  host/                   pasek prowadzącego, timery, skróty i menu (pytania, ustawienia, zapisy)
 ```
 
-Stany gry: `IDLE → INTRO → QUESTION_INTRO → QUESTION_ACTIVE → ANSWER_SELECTED → ANSWER_LOCKED → (VIDEO_PLAYING) → ANSWER_REVEAL → ANSWER_CORRECT / ANSWER_INCORRECT → QUESTION_COMPLETED → …`, a na końcu `GAME_WON` / `GAME_LOST`. Pauza to osobna flaga, która zamraża liczniki, muzykę, wideo i animacje tła.
+Stany gry: `IDLE → INTRO → QUESTION_INTRO → QUESTION_ACTIVE → ANSWER_LOCKED → ANSWER_CORRECT / ANSWER_INCORRECT → QUESTION_COMPLETED → …`, a na końcu `GAME_WON` (albo `GAME_LOST`, gdy gracz zrezygnuje). Pauza to osobna flaga, która zamraża liczniki, muzykę, wideo i animacje tła.
 
 ## Ograniczenia
 
-- **Dźwięk** wymaga jednego kliknięcia w oknie gry po każdym jego otwarciu lub odświeżeniu. To zasada przeglądarek.
-- **Pełny ekran z panelu**: przeglądarki nie pozwalają jednemu oknu włączyć pełnego ekranu w innym. Przycisk w panelu spróbuje, a jeśli przeglądarka odmówi, ekran gry pokaże podpowiedź: naciśnij **F** albo kliknij dwukrotnie okno gry. Tryb „Cały ekran” filmu zawsze działa w obrębie okna gry.
-- **Pliki z dysku** (wideo, obrazy) są zapisywane w IndexedDB tej przeglądarki. Eksport JSON zawiera tylko odnośniki do nich. Na innym komputerze dodaj pliki ponownie albo użyj linków URL.
-- **YouTube**: odtwarzanie, pauza, przewijanie i głośność działają przez API osadzonego odtwarzacza. Wykrycie końca filmu zależy od YouTube. Gdyby nie zadziałało, zamknij film przyciskiem.
-- Synchronizacja działa między oknami **jednej przeglądarki na jednym komputerze**, nie między różnymi urządzeniami.
-- Ekran gry trzymaj w **osobnym oknie**, nie w karcie w tle: przeglądarki spowalniają animacje w ukrytych kartach.
+- Przeglądarki często blokują dźwięk przed pierwszym kliknięciem. Wtedy melodia powitalna zagra przy pierwszym kliknięciu albo naciśnięciu klawisza.
+- Film z odpowiedzią odtwarza się **po** ujawnieniu wyniku, bo wynik pokazuje się automatycznie 6 s po kliknięciu.
+- **Pliki z dysku** (wideo, obrazy) są zapisywane w IndexedDB tej przeglądarki. Eksport JSON zawiera tylko odnośniki do nich.
+- **YouTube**: wykrycie końca filmu zależy od YouTube. Gdyby nie zadziałało, zamknij film przyciskiem.
+- Komentarz prowadzącego jest widoczny tylko w edytorze pytań (plansza jest jedna i widzą ją wszyscy).

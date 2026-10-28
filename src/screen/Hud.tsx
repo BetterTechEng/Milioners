@@ -82,17 +82,21 @@ export function MoneyLadder({
 
 const LIFELINES: LifelineId[] = ['fifty', 'phone', 'audience'];
 
-export function Lifelines({ g, settings }: { g: GameState; settings: Settings }) {
+export function Lifelines({ g, settings, onUse }: { g: GameState; settings: Settings; onUse?: (id: LifelineId) => void }) {
   const list = LIFELINES.filter((l) => settings.lifelinesEnabled[l]);
   return (
     <div className="absolute flex gap-8" style={{ left: 730 - (list.length * 150 + (list.length - 1) * 32) / 2, top: 40 }}>
       {list.map((id) => {
         const used = g.lifelinesUsed[id];
-        const active = g.activeLifeline === id || (id === 'fifty' && g.events.at(-1)?.type === 'fifty');
+        const active = g.activeLifeline === id;
+        const usable = !!onUse && !used && !g.activeLifeline && g.phase === 'QUESTION_ACTIVE' && !g.paused;
         return (
           <motion.div
             key={id}
-            className="relative flex h-[86px] w-[150px] items-center justify-center rounded-[50%] border-[3px]"
+            className={`relative flex h-[86px] w-[150px] items-center justify-center rounded-[50%] border-[3px] ${usable ? 'cursor-pointer hover:brightness-125' : ''}`}
+            onClick={usable ? () => onUse?.(id) : undefined}
+            role={usable ? 'button' : undefined}
+            aria-label={id === 'fifty' ? 'Pół na pół' : id === 'phone' ? 'Telefon do przyjaciela' : 'Pytanie do publiczności'}
             style={{
               borderColor: used ? 'rgba(120,130,200,0.5)' : '#a9b8ff',
               background: used

@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useAppData, store } from '../game/store';
+import { useDirector, useShortcuts } from '../host/hooks';
+import { HostBar } from '../host/HostBar';
 import { currentQuestion } from '../game/machine';
-import { ladder, levelCount } from '../game/rules';
+import { ladder, levelCount, pickFiftyFifty, randomAudience } from '../game/rules';
 import { AudioManager } from '../audio/AudioManager';
 import { Emblem, Stage, StudioBackground, type Mood } from './Studio';
 import { QuestionBoard } from './Board';
 import { Lifelines, MoneyLadder, TopInfo } from './Hud';
 import {
   AudienceOverlay,
-  AudioGate,
   EndOverlay,
   IntroOverlay,
   PauseOverlay,
@@ -18,7 +19,7 @@ import {
   TransitionWipe,
 } from './Overlays';
 import { VideoOverlay } from './VideoOverlay';
-import type { AppData } from '../types';
+import type { AnswerIndex, AppData, LifelineId } from '../types';
 
 function moodFor(data: AppData): Mood {
   const g = data.game;
@@ -55,74 +56,53 @@ export function GameScreen() {
   const data = useAppData();
   const g = data.game;
   const s = data.settings;
-  const [audioReady, setAudioReady] = useState(AudioManager.ready);
-  const [toast, setToast] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lastSeq = useRef(g.eventSeq);
   const dataRef = useRef(data);
   dataRef.current = data;
 
-  // Announce presence to the host panel.
-  useEffect(() => {
-    const ping = () => store.send({ type: 'presence', role: 'screen', id: store.origin, audioReady: AudioManager.ready });
-    ping();
-    const id = window.setInterval(ping, 2000);
-    const off = store.onMessage((msg) => {
-      if (msg.type === 'ping') ping();
-      if (msg.type === 'fullscreen') {
-        toggleFullscreen().then((ok) => {
-          if (!ok) showToast('Przeglądarka zablokowała pełny ekran zdalnie. Naciśnij F lub kliknij dwukrotnie ten ekran.');
-        });
-      }
-    });
-    return () => {
-      window.clearInterval(id);
-      off();
-    };
-  }, []);
+  useDirector(data);
+  useShortcuts(data, {
+    playVideo: () => store.dispatch({ type: 'PLAY_VIDEO', which: 'answer' }),
+    fullscreen: () => void toggleFullscreen(),
+    menuOpen,
+  });
 
-  function showToast(text: string) {
-    setToast(text);
-    window.setTimeout(() => setToast(null), 5000);
-  }
-
-  // Keyboard: F = fullscreen on this screen.
+  // On open: arrival music (or the thinking loop if a question is already on screen).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'f' || e.key === 'F') void toggleFullscreen();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const d = dataRef.current;
+    AudioManager.setVolume(d.settings.volume.master, d.settings.volume.music);
+    AudioManager.setMuted(!d.game.musicOn);
+    AudioManager.setIdleHandler(() => AudioManager.syncLoop(dataRef.current));
+    if (d.game.paused) AudioManager.setPaused(true);
+    if (AudioManager.desiredLoop(d)) AudioManager.syncLoop(d);
+    else AudioManager.playArrival();
+    return () => AudioManager.stop();
   }, []);
 
   // Volumes and music toggle.
   useEffect(() => {
-    AudioManager.setVolumes(s.volume);
-  }, [s.volume]);
+    AudioManager.setVolume(s.volume.master, s.volume.music);
+  }, [s.volume.master, s.volume.music]);
   useEffect(() => {
-    AudioManager.setMusicOn(g.musicOn);
+    AudioManager.setMuted(!g.musicOn);
   }, [g.musicOn]);
 
-  // Translate new game events to audio cues.
+  // Translate new game events to music.
   useEffect(() => {
     const fresh = g.events.filter((e) => e.seq > lastSeq.current);
     lastSeq.current = Math.max(lastSeq.current, g.eventSeq);
-    if (!audioReady) return;
     for (const ev of fresh) AudioManager.handleEvent(ev, data);
-  }, [g.eventSeq, g.events, audioReady, data]);
+  }, [g.eventSeq, g.events, data]);
 
-  async function enableAudio(fullscreen: boolean) {
-    if (fullscreen) await toggleFullscreen();
-    const ok = await AudioManager.unlock();
-    setAudioReady(ok);
-    if (ok) {
-      const d = dataRef.current;
-      AudioManager.setVolumes(d.settings.volume);
-      AudioManager.setMusicOn(d.game.musicOn);
-      if (d.game.paused) void AudioManager.setPaused(true);
-      else AudioManager.syncMusic(d);
-      store.send({ type: 'presence', role: 'screen', id: store.origin, audioReady: true });
-    }
-  }
+  const pickAnswer = (i: AnswerIndex) => store.dispatch({ type: 'SELECT', answer: i });
+  const useLifeline = (id: LifelineId) => {
+    const cq = currentQuestion(dataRef.current);
+    if (!cq) return;
+    if (id === 'fifty') store.dispatch({ type: 'FIFTY_START', removed: pickFiftyFifty(cq.correct) });
+    else if (id === 'phone') store.dispatch({ type: 'PHONE_START' });
+    else store.dispatch({ type: 'AUDIENCE_START', results: randomAudience(dataRef.current.game.removed) });
+  };
 
   const q = currentQuestion(data);
   const total = g.testMode ? data.questions.length : levelCount(data.questions, s);
@@ -147,7 +127,7 @@ export function GameScreen() {
                   <Emblem title={s.title} size={520} />
                 </motion.div>
                 {!s.presentationMode && (
-                  <div className="mt-10 font-display text-[28px] tracking-[0.3em] text-blue-200/80 uppercase">Czekamy na prowadzącego</div>
+                  <div className="mt-10 font-display text-[28px] tracking-[0.3em] text-blue-200/80 uppercase">Prowadzący rozpoczyna grę przyciskiem „Start gry”</div>
                 )}
               </motion.div>
             )}
@@ -158,7 +138,7 @@ export function GameScreen() {
           {g.phase !== 'IDLE' && g.phase !== 'INTRO' && (
             <>
               <TopInfo title={s.title} participant={g.participant} testMode={g.testMode} level={g.index} total={total} showMeta={!s.presentationMode} />
-              <Lifelines g={g} settings={s} />
+              <Lifelines g={g} settings={s} onUse={useLifeline} />
               {!g.testMode && <MoneyLadder prizes={prizes} settings={s} g={g} />}
             </>
           )}
@@ -179,7 +159,7 @@ export function GameScreen() {
             )}
           </AnimatePresence>
 
-          {onBoard && q && <QuestionBoard g={g} q={q} speed={speed} showImage={!g.activeLifeline} />}
+          {onBoard && q && <QuestionBoard g={g} q={q} speed={speed} showImage={!g.activeLifeline} onPick={pickAnswer} />}
 
           <ResultBanner data={data} q={q} />
           <AudienceOverlay g={g} />
@@ -189,22 +169,9 @@ export function GameScreen() {
           <EndOverlay data={data} />
           <PauseOverlay paused={g.paused} />
 
-          {!audioReady && <AudioGate onEnable={(fs) => void enableAudio(fs)} />}
-
-          <AnimatePresence>
-            {toast && (
-              <motion.div
-                className="absolute bottom-10 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-black/80 px-10 py-5 font-display text-[26px] text-white"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-              >
-                {toast}
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </Stage>
+      <HostBar data={data} onFullscreen={() => void toggleFullscreen()} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
     </MotionConfig>
   );
 }

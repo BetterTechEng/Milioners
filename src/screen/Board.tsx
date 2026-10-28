@@ -61,11 +61,13 @@ export function QuestionBoard({
   q,
   speed,
   showImage,
+  onPick,
 }: {
   g: GameState;
   q: Question;
   speed: number;
   showImage: boolean;
+  onPick?: (i: AnswerIndex) => void;
 }) {
   const elapsed = usePhaseElapsed(g);
   const t = introTiming(speed);
@@ -136,6 +138,7 @@ export function QuestionBoard({
             left={80 + col * 670}
             top={790 + row * 115}
             speed={speed}
+            onPick={onPick && g.phase === 'QUESTION_ACTIVE' && !g.activeLifeline && !g.removed.includes(i) ? () => onPick(i) : undefined}
           />
         );
       })}
@@ -150,6 +153,7 @@ function AnswerBox({
   left,
   top,
   speed,
+  onPick,
 }: {
   letter: string;
   text: string;
@@ -157,6 +161,7 @@ function AnswerBox({
   left: number;
   top: number;
   speed: number;
+  onPick?: () => void;
 }) {
   const shown = visual !== 'hidden' && visual !== 'removed';
   const stateClass =
@@ -175,8 +180,11 @@ function AnswerBox({
     <AnimatePresence custom={visual}>
       {shown && (
         <motion.div
-          className={`absolute ${stateClass}`}
+          className={`absolute ${stateClass} ${onPick ? 'cursor-pointer hover:brightness-125' : ''}`}
           style={{ left, top, width: 630, height: 96 }}
+          onClick={onPick}
+          role={onPick ? 'button' : undefined}
+          aria-label={onPick ? `Odpowiedź ${letter}: ${text}` : undefined}
           custom={visual}
           variants={{
             exit: (v: AnswerVisual) =>

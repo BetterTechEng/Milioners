@@ -1,220 +1,225 @@
 import type { AppData, GameEvent } from '../types';
-import { introTiming, levelCount, tensionTier } from '../game/rules';
-import { AudioEngine } from './engine';
-import { MusicPlayer, type MusicId } from './music';
-import { SoundFx, type SfxId } from './sfx';
+
+/** The show's MP3 tracks (public/audio). */
+export type TrackId =
+  | 'arriving'
+  | 'mainTheme'
+  | 'finalAnswer'
+  | 'correct'
+  | 'wrong'
+  | 'letsPlay'
+  | 'newQuestion'
+  | 'phone'
+  | 'fifty'
+  | 'audience'
+  | 'music64000'
+  | 'music500000';
+
+const FILES: Record<TrackId, string> = {
+  arriving: 'candidates-arriving.mp3',
+  mainTheme: 'main-theme.mp3',
+  finalAnswer: 'final-answer.mp3',
+  correct: 'correct-answer.mp3',
+  wrong: 'wrong-answer.mp3',
+  letsPlay: 'lets-play.mp3',
+  newQuestion: 'new-question.mp3',
+  phone: 'phone-a-friend.mp3',
+  fifty: 'fastest-finger.mp3',
+  audience: 'ask-the-audience.mp3',
+  music64000: 'music-64000.mp3',
+  music500000: 'music-500000.mp3',
+};
+
+/** Only the two "thinking" beds loop; every other track plays once. */
+const LOOPING: TrackId[] = ['music64000', 'music500000'];
+
+/** Thinking music by question number: 6–8 → 64 000, 9+ → 500 000, none for 1–5. */
+export function thinkingTrack(questionNumber: number): TrackId | null {
+  if (questionNumber >= 9) return 'music500000';
+  if (questionNumber >= 6) return 'music64000';
+  return null;
+}
 
 /**
- * Central, event-driven audio director for the game screen.
- * Game events (from the shared state) map to music cues and sound effects;
- * the looping bed always follows the current phase.
+ * Plays exactly one track at a time: starting a track stops the previous one.
+ * Game events are mapped to tracks; all delays (6 s reveal, 8 s 50:50,
+ * 32 s audience) are driven by the game state, so nothing stale can fire
+ * after the host moves on.
  */
 class AudioManagerImpl {
-  private engine: AudioEngine | null = null;
-  private music: MusicPlayer | null = null;
-  private fx: SoundFx | null = null;
-  private volumes = { master: 0.9, music: 0.7, sfx: 0.85 };
-  private musicOn = true;
+  private els = new Map<TrackId, HTMLAudioElement>();
+  private current: { id: TrackId; el: HTMLAudioElement } | null = null;
+  private volume = 0.6;
+  private muted = false;
   private paused = false;
-  private readyListeners = new Set<() => void>();
+  /** Track that the browser blocked; retried on the first user interaction. */
+  private blocked: TrackId | null = null;
+  private onIdle: (() => void) | null = null;
 
-  get ready(): boolean {
-    return !!this.engine && this.engine.running;
+  constructor() {
+    const retry = () => {
+      // Give the interaction a moment: if it started another track itself, skip the retry.
+      const want = this.blocked;
+      window.setTimeout(() => {
+        if (want && this.blocked === want) this.play(want);
+      }, 150);
+    };
+    window.addEventListener('pointerdown', retry, { capture: true });
+    window.addEventListener('keydown', retry, { capture: true });
   }
 
-  /** Must be called from a user gesture (browser autoplay rules). */
-  async unlock(): Promise<boolean> {
-    try {
-      if (!this.engine) {
-        this.engine = new AudioEngine();
-        this.music = new MusicPlayer(this.engine);
-        this.fx = new SoundFx(this.engine);
-        this.engine.setVolumes(this.volumes);
-        this.engine.setMusicMuted(!this.musicOn);
-      }
-      await this.engine.unlock();
-      this.readyListeners.forEach((l) => l());
-      return this.engine.running;
-    } catch (err) {
-      console.error('Audio unlock failed', err);
-      return false;
+  private el(id: TrackId): HTMLAudioElement {
+    let el = this.els.get(id);
+    if (!el) {
+      el = new Audio(`${import.meta.env.BASE_URL}audio/${FILES[id]}`);
+      el.preload = 'auto';
+      el.addEventListener('ended', () => {
+        if (this.current?.el === el) {
+          this.current = null;
+          this.onIdle?.();
+        }
+      });
+      this.els.set(id, el);
     }
+    return el;
   }
 
-  onReady(fn: () => void) {
-    this.readyListeners.add(fn);
-    return () => this.readyListeners.delete(fn);
+  /** Called when a one-shot track finishes (used to resume thinking music). */
+  setIdleHandler(fn: () => void) {
+    this.onIdle = fn;
   }
 
-  setVolumes(v: { master: number; music: number; sfx: number }) {
-    this.volumes = { master: v.master, music: v.music, sfx: v.sfx };
-    if (this.engine && !this.paused) this.engine.setVolumes(this.volumes);
+  get currentId(): TrackId | null {
+    return this.current?.id ?? null;
   }
 
-  setMusicOn(on: boolean) {
-    this.musicOn = on;
-    this.engine?.setMusicMuted(!on);
+  setVolume(master: number, music: number) {
+    this.volume = Math.max(0, Math.min(1, master * music));
+    this.els.forEach((el) => (el.volume = this.volume));
   }
 
-  sfx(id: SfxId, opts?: { delay?: number; arg?: number }) {
-    if (!this.fx || this.paused) return;
-    this.fx.play(id, opts);
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    this.els.forEach((el) => (el.muted = muted));
   }
 
-  /** Music bed that belongs to the current state (no stings). */
-  desiredMusic(data: AppData): MusicId | null {
-    const g = data.game;
-    if (g.activeLifeline || g.video) return null;
-    const total = g.testMode ? data.questions.length : levelCount(data.questions, data.settings);
-    const tier = tensionTier(g.index, total);
-    switch (g.phase) {
-      case 'IDLE':
-      case 'INTRO':
-        return 'lobby';
-      case 'QUESTION_ACTIVE':
-      case 'ANSWER_SELECTED':
-        return `tension${tier}` as MusicId;
-      case 'ANSWER_LOCKED':
-      case 'ANSWER_REVEAL':
-        return `suspense${tier}` as MusicId;
-      case 'ANSWER_CORRECT':
-        return 'afterglow';
-      case 'ANSWER_INCORRECT':
-        return 'aftermath';
-      case 'GAME_WON':
-        return 'celebration';
-      case 'GAME_LOST':
-        return 'lobby';
-      default:
-        return null;
+  play(id: TrackId) {
+    this.stop();
+    this.blocked = null;
+    const el = this.el(id);
+    el.loop = LOOPING.includes(id);
+    el.volume = this.volume;
+    el.muted = this.muted;
+    el.currentTime = 0;
+    this.current = { id, el };
+    if (this.paused) return;
+    el.play().catch((err: unknown) => {
+      if (this.current?.el !== el) return;
+      if ((err as DOMException)?.name === 'NotAllowedError') this.blocked = id;
+    });
+  }
+
+  stop() {
+    if (this.current) {
+      this.current.el.pause();
+      this.current.el.currentTime = 0;
     }
+    this.current = null;
+    this.blocked = null;
   }
 
-  /** Bring the music bed in line with the state (used on load and after interruptions). */
-  syncMusic(data: AppData, fade = 1.5) {
-    if (!this.music) return;
-    const want = this.desiredMusic(data);
-    if (want) this.music.play(want, { fade });
-    else this.music.stop(fade);
-  }
-
-  async setPaused(paused: boolean) {
-    if (!this.engine || paused === this.paused) return;
+  setPaused(paused: boolean) {
     this.paused = paused;
-    if (paused) {
-      this.fx?.play('pause');
-      await this.engine.pause();
-    } else {
-      await this.engine.resume(this.volumes.master);
-      this.fx?.play('resume');
-    }
+    const el = this.current?.el;
+    if (!el) return;
+    if (paused) el.pause();
+    else el.play().catch(() => undefined);
+  }
+
+  /** Thinking music that should be playing right now, if any. */
+  desiredLoop(data: AppData): TrackId | null {
+    const g = data.game;
+    if (g.phase !== 'QUESTION_ACTIVE' || g.activeLifeline || g.video || g.paused) return null;
+    return thinkingTrack(g.index + 1);
+  }
+
+  /** Start the thinking loop when it belongs on screen and nothing else is playing. */
+  syncLoop(data: AppData, force = false) {
+    const want = this.desiredLoop(data);
+    if (!want || this.currentId === want) return;
+    if (this.current && !force) return;
+    this.play(want);
   }
 
   handleEvent(ev: GameEvent, data: AppData) {
-    const music = this.music;
-    const fx = this.fx;
-    if (!music || !fx) return;
-    const g = data.game;
-    const total = g.testMode ? data.questions.length : levelCount(data.questions, data.settings);
-    const tier = tensionTier(g.index, total);
-    const timing = introTiming(data.settings.animationSpeed);
-
+    const source = ev.data?.source;
     switch (ev.type) {
       case 'gameStart':
-        fx.cutAll();
-        music.play('intro', { then: 'lobby', restart: true });
+        this.play('mainTheme');
         break;
-      case 'questionIn': {
-        music.stop(0.8);
-        fx.cut('roll');
-        const items: { id: SfxId; delay?: number; arg?: number }[] = [{ id: 'questionIn', delay: 0 }];
-        for (let i = 0; i < 4; i++) {
-          items.push({ id: 'answerIn', delay: (timing.firstAnswerMs + i * timing.staggerMs) / 1000, arg: i });
-        }
-        fx.playMany('intro', items);
-        music.play(`tension${tier}` as MusicId, { delay: timing.totalMs / 1000 - 0.3, fade: 1.6, restart: true });
-        break;
-      }
-      case 'select':
-        fx.play('select');
-        break;
-      case 'lock':
-        fx.play('lock');
-        music.play(`suspense${tier}` as MusicId, { delay: 0.35, fade: 1.2 });
-        break;
-      case 'reveal':
-        fx.play('revealRoll', { arg: data.settings.revealDelayMs / 1000 });
-        break;
-      case 'correct':
-        fx.cut('roll', 0.05);
-        music.play('success', { then: 'afterglow', restart: true });
-        break;
-      case 'threshold':
-        fx.cut('roll', 0.05);
-        music.play('threshold', { then: 'afterglow', restart: true });
-        break;
-      case 'incorrect':
-        fx.cut('roll', 0.05);
-        music.play('fail', { then: 'aftermath', restart: true });
-        break;
-      case 'won':
-        music.play('victory', { then: 'celebration', restart: true });
-        break;
-      case 'lost':
-        music.play('farewell', { then: 'lobby', restart: true, fade: 1.5 });
+      case 'questionIn':
+        if (source === 'first') this.play('letsPlay');
+        else if (source !== 'advance') this.stop();
         break;
       case 'next':
-        fx.play('transition');
-        music.stop(0.8);
+        this.play('newQuestion');
+        break;
+      case 'questionActive': {
+        const loop = thinkingTrack(data.game.index + 1);
+        if (loop) this.play(loop);
+        break;
+      }
+      case 'lock':
+        this.play('finalAnswer');
+        break;
+      case 'correct':
+      case 'threshold':
+        this.play('correct');
+        break;
+      case 'incorrect':
+        this.play('wrong');
+        break;
+      case 'won':
+      case 'lost':
+        this.play('mainTheme');
         break;
       case 'fifty':
-        fx.play('fifty');
+        this.play('fifty');
         break;
       case 'audienceStart':
-        music.stop(0.8);
-        fx.play('lifeline');
-        fx.play('crowd', { delay: 0.6, arg: 22 });
-        break;
-      case 'audienceResults':
-        fx.cut('crowd', 0.6);
-        fx.play('audienceReveal');
+        this.play('audience');
         break;
       case 'phoneStart':
-        music.stop(0.8);
-        fx.play('lifeline');
-        fx.playMany('phone', [
-          { id: 'dial', delay: 0.5 },
-          { id: 'ring', delay: 2.6, arg: 8 },
-        ]);
-        break;
-      case 'phoneConnected':
-        fx.play('pickup');
-        break;
-      case 'phoneEnd':
-        fx.cut('tick');
-        fx.play('callEnd');
+        this.play('phone');
         break;
       case 'lifelineClose':
-        fx.cut('crowd', 0.5);
-        fx.cut('tick');
-        fx.play('lifelineClose');
-        this.syncMusic(data, 2);
-        break;
-      case 'pause':
-        void this.setPaused(true);
-        break;
-      case 'resume':
-        void this.setPaused(false);
+        this.syncLoop(data, true);
         break;
       case 'videoStart':
-        fx.cutAll();
-        music.stop(1.2);
+        this.stop();
         break;
       case 'videoEnd':
-        this.syncMusic(data, 2);
+        this.syncLoop(data, true);
+        break;
+      case 'reset':
+        this.stop();
+        break;
+      case 'pause':
+        this.setPaused(true);
+        break;
+      case 'resume':
+        this.setPaused(false);
         break;
     }
+  }
+
+  /** Play the arrival music when the game page opens (retried on first click if blocked). */
+  playArrival() {
+    if (!this.current) this.play('arriving');
   }
 }
 
 export const AudioManager = new AudioManagerImpl();
+
+// Handy for manual testing in the browser console during development.
+if (import.meta.env.DEV) (window as unknown as { __audio: typeof AudioManager }).__audio = AudioManager;

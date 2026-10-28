@@ -105,7 +105,10 @@ export interface GameEvent {
 
 export type GameEventType =
   | 'gameStart'
+  | 'reset'
   | 'questionIn'
+  | 'questionActive'
+  | 'fiftyApplied'
   | 'select'
   | 'lock'
   | 'reveal'
@@ -155,6 +158,10 @@ export interface GameState {
   endReason: 'wrong' | 'stopped' | null;
   /** Epoch ms when the game was paused. */
   pausedAt: number;
+  /** Epoch ms when the active lifeline started (shifted on resume). */
+  lifelineAt: number;
+  /** Answers 50:50 will remove once its 8 s sequence finishes. */
+  fiftyPending: AnswerIndex[] | null;
 }
 
 export interface HistoryEntry {

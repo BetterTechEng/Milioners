@@ -83,6 +83,11 @@ export function simulateAudience(
   return normalizeTo100(weights);
 }
 
+/** Random audience vote for the answers still on screen; always sums to 100%. */
+export function randomAudience(removed: AnswerIndex[], rng: () => number = Math.random): [number, number, number, number] {
+  return normalizeTo100([0, 1, 2, 3].map((a) => (removed.includes(a as AnswerIndex) ? 0 : 0.05 + rng())));
+}
+
 /** Scale non-negative numbers so integers sum to exactly 100 (largest remainder). */
 export function normalizeTo100(values: number[]): [number, number, number, number] {
   const total = values.reduce((s, v) => s + Math.max(0, v), 0);

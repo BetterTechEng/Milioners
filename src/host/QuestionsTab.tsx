@@ -166,7 +166,7 @@ function QuestionEditor({ initial, onSave, onCancel }: { initial: Question; onSa
             ))}
           </div>
           <p className="text-xs text-blue-300/70">Zaznacz kółko przy poprawnej odpowiedzi.</p>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Poziom trudności">
               <select className={inputCls} value={q.difficulty} onChange={(e) => set('difficulty', Number(e.target.value) as Question['difficulty'])}>
                 <option value={1}>Łatwe</option>
@@ -177,20 +177,13 @@ function QuestionEditor({ initial, onSave, onCancel }: { initial: Question; onSa
             <Field label="Wartość nagrody (opcjonalnie)" hint="Puste = kwota z drabinki">
               <input className={inputCls} type="number" min={0} value={q.prize ?? ''} onChange={(e) => set('prize', e.target.value ? Number(e.target.value) : undefined)} />
             </Field>
-            <Field label="Moment filmu z odpowiedzią">
-              <select className={inputCls} value={q.videoTiming ?? ''} onChange={(e) => set('videoTiming', (e.target.value || undefined) as Question['videoTiming'])}>
-                <option value="">Domyślnie (z ustawień)</option>
-                <option value="before">Przed ujawnieniem</option>
-                <option value="after">Po ujawnieniu</option>
-              </select>
-            </Field>
           </div>
           <Field label="Komentarz prowadzącego (widoczny tylko w panelu)">
             <textarea className={inputCls} rows={2} value={q.hostComment ?? ''} onChange={(e) => set('hostComment', e.target.value)} />
           </Field>
           <MediaField label="Grafika do pytania" accept="image/*" value={q.image} onChange={(v) => set('image', v)} />
           <MediaField label="Wideo do pytania" accept="video/mp4,video/webm,video/*" value={q.video} onChange={(v) => set('video', v)} video />
-          <MediaField label="Film z odpowiedzią (np. nagranie osoby)" accept="video/mp4,video/webm,video/*" value={q.answerVideo} onChange={(v) => set('answerVideo', v)} video />
+          <MediaField label="Film z odpowiedzią (odtwarzany po ujawnieniu wyniku)" accept="video/mp4,video/webm,video/*" value={q.answerVideo} onChange={(v) => set('answerVideo', v)} video />
           {error && <p className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">{error}</p>}
           <div className="flex justify-end gap-2">
             <Btn tone="ghost" onClick={onCancel}>Anuluj</Btn>

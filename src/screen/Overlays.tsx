@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, animate } from 'motion/react';
-import { Pause, Phone, PhoneOff, Users, Volume2 } from 'lucide-react';
+import { Pause, Phone, PhoneOff, Users } from 'lucide-react';
 import type { AppData, GameState, Question, Settings } from '../types';
 import { ANSWER_LETTERS } from '../types';
-import { formatMoney, guaranteedPrize, isThreshold, prizeAt } from '../game/rules';
+import { formatMoney, isThreshold, lastCorrectLevel, prizeAt } from '../game/rules';
 import { phoneLeftMs } from '../game/machine';
-import { AudioManager } from '../audio/AudioManager';
 import { Emblem } from './Studio';
 
 /* ---------- Audience ---------- */
@@ -104,19 +103,6 @@ export function PhoneOverlay({ g, settings }: { g: GameState; settings: Settings
   const secs = Math.ceil(leftMs / 1000);
   const total = settings.phoneSeconds;
 
-  // Tick once per second while running.
-  const lastSec = useRef<number | null>(null);
-  useEffect(() => {
-    if (!p || p.status !== 'connected' || !p.running || g.paused) {
-      lastSec.current = null;
-      return;
-    }
-    if (lastSec.current !== null && secs !== lastSec.current && secs > 0) {
-      AudioManager.sfx(secs <= 5 ? 'tickUrgent' : 'tick');
-    }
-    lastSec.current = secs;
-  }, [secs, p, g.paused]);
-
   const urgent = secs <= 5 && p?.status === 'connected';
   const R = 120;
   const C = 2 * Math.PI * R;
@@ -202,7 +188,7 @@ export function PhoneOverlay({ g, settings }: { g: GameState; settings: Settings
                 ) : p.running ? (
                   'Rozmowa trwa'
                 ) : (
-                  'Połączono, czekamy na start'
+                  'Odliczanie wstrzymane'
                 )}
               </div>
             </div>
@@ -221,7 +207,6 @@ export function ResultBanner({ data, q }: { data: AppData; q: Question | undefin
   const correct = g.phase === 'ANSWER_CORRECT';
   const thr = correct && isThreshold(data.settings, g.index) && !g.testMode;
   const prize = prizeAt(data.questions, data.settings, g.index);
-  const safe = guaranteedPrize(data.questions, data.settings, g.results);
   if (!q) return null;
   return (
     <AnimatePresence>
@@ -261,9 +246,6 @@ export function ResultBanner({ data, q }: { data: AppData; q: Question | undefin
               <div className="mt-2 font-display text-[32px] font-semibold text-blue-100">
                 Prawidłowa odpowiedź: <span className="font-black text-green-300">{ANSWER_LETTERS[q.correct]}</span>
               </div>
-              {!g.testMode && (
-                <div className="mt-3 font-display text-[30px] text-gold-300">Kwota gwarantowana: {formatMoney(safe, data.settings.currency)}</div>
-              )}
             </>
           )}
         </motion.div>
@@ -361,6 +343,7 @@ export function EndOverlay({ data }: { data: AppData }) {
   const won = g.phase === 'GAME_WON';
   const lost = g.phase === 'GAME_LOST';
   const prize = g.finalPrize ?? 0;
+  const lastWasCorrect = g.results.at(-1)?.outcome === 'correct' && lastCorrectLevel(g.results) >= 0;
   return (
     <AnimatePresence>
       {(won || lost) && (
@@ -382,7 +365,7 @@ export function EndOverlay({ data }: { data: AppData }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
           >
-            {won ? 'Gratulacje!' : g.endReason === 'stopped' ? 'Gracz kończy grę' : 'Koniec gry'}
+            {g.endReason === 'stopped' ? 'Gracz kończy grę' : lastWasCorrect ? 'Gratulacje!' : 'Koniec teleturnieju'}
           </motion.div>
           {g.participant && (
             <motion.div className="mt-2 font-display text-[40px] font-semibold text-blue-100" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }}>
@@ -421,24 +404,5 @@ export function TransitionWipe({ active }: { active: boolean }) {
         />
       )}
     </AnimatePresence>
-  );
-}
-
-export function AudioGate({ onEnable }: { onEnable: (fullscreen: boolean) => void }) {
-  return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[rgba(2,4,26,0.9)] backdrop-blur-md">
-      <Emblem title="Ekran gry" size={300} />
-      <p className="mt-8 max-w-[1100px] text-center font-display text-[30px] text-blue-100">
-        Przeglądarka wymaga jednego kliknięcia, zanim ekran gry odtworzy dźwięk i wideo.
-      </p>
-      <div className="mt-10 flex gap-8">
-        <button onClick={() => onEnable(true)} className="flex items-center gap-3 rounded-full bg-gradient-to-b from-gold-300 to-gold-500 px-12 py-6 font-display text-[32px] font-black text-[#2a1600] shadow-[0_0_40px_rgba(255,200,80,0.7)] hover:brightness-110">
-          <Volume2 size={36} /> Włącz dźwięk i pełny ekran
-        </button>
-        <button onClick={() => onEnable(false)} className="rounded-full border-2 border-blue-300 px-10 py-6 font-display text-[28px] font-bold text-blue-100 hover:bg-blue-500/20">
-          Tylko dźwięk
-        </button>
-      </div>
-    </div>
   );
 }
