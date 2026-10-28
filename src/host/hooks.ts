@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { AnswerIndex, AppData } from '../types';
 import { store } from '../game/store';
-import { introTiming, levelCount } from '../game/rules';
-import { AUDIENCE_AFTER_MS, FIFTY_AFTER_MS, REVEAL_AFTER_MS, phoneLeftMs, type Action } from '../game/machine';
+import { levelCount } from '../game/rules';
+import { AUDIENCE_AFTER_MS, FIFTY_AFTER_MS, TRANSITION_MS, phoneLeftMs, type Action } from '../game/machine';
 
 /**
  * Timed transitions, each counted from the event that started it:
- * answer click → reveal (6 s), 50:50 start → removal (8 s), audience start → results (32 s),
- * plus the question intro, the transition between questions and the phone time-out.
+ * transition music → question (5 s), 50:50 start → removal (8 s), audience start → results (32 s),
+ * plus the phone time-out. Answers and the result are revealed by the host.
  * Every timer is cleared when the state moves on, so nothing from an old question can fire.
  */
 export function useDirector(data: AppData) {
@@ -22,16 +22,9 @@ export function useDirector(data: AppData) {
     let action: Action | null = null;
 
     switch (g.phase) {
-      case 'QUESTION_INTRO':
-        delay = introTiming(s.animationSpeed).totalMs;
-        action = { type: 'ANSWERS_SHOWN' };
-        break;
-      case 'ANSWER_LOCKED':
-        delay = REVEAL_AFTER_MS;
-        action = { type: 'RESOLVE' };
-        break;
+      // The question appears when the 5 s transition music ends.
       case 'QUESTION_COMPLETED':
-        delay = 1700 * s.animationSpeed;
+        delay = TRANSITION_MS;
         action = { type: 'ADVANCE' };
         break;
       case 'ANSWER_CORRECT':
@@ -52,7 +45,7 @@ export function useDirector(data: AppData) {
     const a = action;
     const id = window.setTimeout(() => store.dispatch(a), Math.max(0, delay - elapsed));
     return () => window.clearTimeout(id);
-  }, [g.phase, g.phaseStartedAt, g.paused, g.index, g.testMode, s.animationSpeed, s.autoTransitions, total]);
+  }, [g.phase, g.phaseStartedAt, g.paused, g.index, g.testMode, s.autoTransitions, total]);
 
   // Lifeline sequences.
   useEffect(() => {
@@ -105,6 +98,11 @@ export function useShortcuts(data: AppData, extra: { playVideo: () => void; full
       };
       if (['1', '2', '3', '4'].includes(k)) {
         store.dispatch({ type: 'SELECT', answer: (Number(k) - 1) as AnswerIndex });
+      } else if (k === 'enter') {
+        e.preventDefault();
+        guarded(() => store.dispatch({ type: 'SHOW_ANSWER' }));
+      } else if (k === 'r') {
+        guarded(() => store.dispatch({ type: 'REVEAL' }));
       } else if (k === ' ') {
         e.preventDefault();
         guarded(() => store.dispatch({ type: g.paused ? 'RESUME' : 'PAUSE' }));

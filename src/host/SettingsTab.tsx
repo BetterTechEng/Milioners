@@ -127,7 +127,7 @@ export function SettingsTab({ data }: { data: AppData }) {
             <Toggle label="Automatyczne przejścia" hint="Intro → pierwsze pytanie i wynik odpowiedzi → następne pytanie bez klikania. Domyślnie wyłączone." checked={s.autoTransitions} onChange={(v) => set({ autoTransitions: v })} />
             <Toggle label="Tryb prezentacyjny" hint="Ukrywa kursor i podpowiedzi na ekranie gry." checked={s.presentationMode} onChange={(v) => set({ presentationMode: v })} />
             <Toggle label="Ogranicz animacje" hint="Wyłącza ruch tła i skraca animacje (dostępność)." checked={s.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
-            <Toggle label="Skróty klawiaturowe" hint="1–4 wybór odpowiedzi, Spacja pauza, N start / następne pytanie, V film, F pełny ekran, M muzyka." checked={s.shortcutsEnabled} onChange={(v) => set({ shortcutsEnabled: v })} />
+            <Toggle label="Skróty klawiaturowe" hint="Enter pokaż kolejną odpowiedź A–D, 1–4 wybór odpowiedzi, R pokaż wynik, Spacja pauza, N start / następne pytanie, V film, F pełny ekran, M muzyka." checked={s.shortcutsEnabled} onChange={(v) => set({ shortcutsEnabled: v })} />
           </div>
         </Card>
       </div>

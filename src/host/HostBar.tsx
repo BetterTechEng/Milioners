@@ -72,7 +72,10 @@ export function HostBar({ data, onFullscreen, menuOpen, setMenuOpen }: { data: A
   const last = g.index >= total - 1;
 
   let primary: { label: string; action: Action } | null = null;
-  if (g.phase === 'IDLE') primary = { label: 'Start gry', action: { type: 'START_GAME' } };
+  if (g.paused) primary = { label: g.breakPending ? 'Wznów grę po przerwie' : 'Wznów grę', action: { type: 'RESUME' } };
+  else if (g.phase === 'QUESTION_INTRO') primary = { label: `Pokaż odpowiedź ${'ABCD'[g.answersShown] ?? ''}`, action: { type: 'SHOW_ANSWER' } };
+  else if (g.phase === 'ANSWER_LOCKED') primary = { label: 'Pokaż odpowiedź', action: { type: 'REVEAL' } };
+  else if (g.phase === 'IDLE') primary = { label: 'Start gry', action: { type: 'START_GAME' } };
   else if (g.phase === 'INTRO') primary = { label: 'Pierwsze pytanie', action: { type: 'NEXT_QUESTION' } };
   else if (g.phase === 'ANSWER_CORRECT' || g.phase === 'ANSWER_INCORRECT')
     primary = { label: g.testMode ? 'Zakończ test' : last ? 'Zakończ teleturniej' : 'Następne pytanie', action: { type: 'NEXT_QUESTION' } };

@@ -8,9 +8,10 @@ Gra w stylu telewizyjnego teleturnieju z pytaniami za coraz większe kwoty. Wszy
 
 1. Otwórz stronę na komputerze podłączonym do telewizora. Naciśnij **F** (pełny ekran).
 2. Na dole ekranu jest mały pasek prowadzącego. Kliknij **Start gry**, a potem **Pierwsze pytanie**.
-3. Uczestnik klika odpowiedź albo koło ratunkowe bezpośrednio na planszy.
-4. Po wyniku prowadzący klika **Następne pytanie**. Błędna odpowiedź nie kończy gry.
-5. Pytania, ustawienia i zapisy są pod przyciskiem **Menu** na pasku.
+3. Pytanie pojawia się po 5 s muzyki przejścia. Prowadzący odsłania odpowiedzi przyciskiem **Pokaż odpowiedź A**, **B**, **C**, **D**.
+4. Uczestnik klika odpowiedź (albo koło ratunkowe) bezpośrednio na planszy.
+5. Prowadzący klika **Pokaż odpowiedź**, a potem **Następne pytanie**. Błędna odpowiedź nie kończy gry.
+6. Pytania, ustawienia i zapisy są pod przyciskiem **Menu** na pasku.
 
 ## Uruchomienie lokalne
 
@@ -33,10 +34,12 @@ Otwórz adres wypisany przez Vite.
 
 ## Przebieg pytania
 
-1. **Prezentacja**: pytanie wjeżdża, odpowiedzi A, B, C, D pojawiają się po kolei.
-2. **Odpowiedź**: uczestnik klika odpowiedź (albo prowadzący naciska 1–4). Odpowiedź od razu się blokuje i nie da się jej zmienić.
-3. **Ujawnienie**: dokładnie 6 s po kliknięciu pole zmienia kolor na zielony albo czerwony, a przy błędzie poprawna odpowiedź świeci na zielono.
-4. **Dalej**: prowadzący klika **Następne pytanie**. Po ostatnim pytaniu przycisk zmienia się w **Zakończ teleturniej**.
+1. **Przejście**: po kliknięciu „Następne pytanie” gra 5 s muzyki, potem pojawia się treść pytania.
+2. **Odpowiedzi**: prowadzący odsłania je po kolei (A, B, C, D). Uczestnik może kliknąć dopiero, gdy widać wszystkie cztery.
+3. **Odpowiedź**: uczestnik klika odpowiedź (albo prowadzący naciska 1–4). Odpowiedź się blokuje, gra „final answer” — aż do ujawnienia.
+4. **Ujawnienie**: prowadzący klika **Pokaż odpowiedź**. Pole zmienia kolor na zielony albo czerwony, a przy błędzie poprawna odpowiedź świeci na zielono.
+5. **Dalej**: **Następne pytanie**. Po ostatnim pytaniu przycisk zmienia się w **Zakończ teleturniej**.
+6. **Przerwa po 5. pytaniu**: kliknięcie „Następne pytanie” po 5. pytaniu włącza klakson i pauzuje grę. **Wznów grę po przerwie** przechodzi do pytania 6.
 
 Przycisków nie da się uruchomić podwójnie: drugie szybkie kliknięcie jest ignorowane. Po przejściu do innego pytania wszystkie timery poprzedniego pytania są kasowane.
 
@@ -44,10 +47,12 @@ Przycisków nie da się uruchomić podwójnie: drugie szybkie kliknięcie jest i
 
 | Klawisz | Akcja |
 |---|---|
+| Enter | Pokaż kolejną odpowiedź (A, B, C, D) |
 | 1 / 2 / 3 / 4 | Odpowiedź A / B / C / D |
+| R | Pokaż odpowiedź (wynik) |
 | Spacja | Pauza / wznowienie |
 | N | Start gry / następne pytanie |
-| V | Film z odpowiedzią (po ujawnieniu) |
+| V | Film z odpowiedzią |
 | F | Pełny ekran |
 | M | Muzyka wł./wył. |
 
@@ -87,23 +92,25 @@ Format JSON:
 
 ## Muzyka
 
-Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna melodia: nowa zatrzymuje poprzednią. W pętli grają tylko muzyki napięcia.
+Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna melodia: nowa zatrzymuje poprzednią. W pętli grają tylko muzyki do zastanawiania się i „final answer”.
 
 | Zdarzenie | Plik |
 |---|---|
 | Otwarcie strony (jeśli przeglądarka zablokuje, przy pierwszym kliknięciu) | `candidates-arriving.mp3` |
 | Start gry i koniec teleturnieju | `main-theme.mp3` |
-| Przejście do pierwszego pytania | `lets-play.mp3` |
-| „Następne pytanie” (kolejne pytania) | `new-question.mp3` |
-| Pytania 6–8, w pętli do kliknięcia odpowiedzi | `music-64000.mp3` |
-| Pytania 9–15, w pętli do kliknięcia odpowiedzi | `music-500000.mp3` |
-| Kliknięcie odpowiedzi | `final-answer.mp3` |
-| 6 s po kliknięciu | `correct-answer.mp3` albo `wrong-answer.mp3` |
+| Przejście do pierwszego pytania (5 s) | `lets-play.mp3` |
+| „Następne pytanie” (5 s; plik przycięty do 5 s) | `new-question.mp3` |
+| Pytania 1–5, w pętli od pojawienia się pytania do kliknięcia odpowiedzi | `music-64000.mp3` |
+| Pytania 6–8, w pętli | `music-125000.mp3` |
+| Pytania 9–15, w pętli | `music-500000.mp3` |
+| Kliknięcie odpowiedzi, w pętli do „Pokaż odpowiedź” | `final-answer.mp3` |
+| „Pokaż odpowiedź” | `correct-answer.mp3` albo `wrong-answer.mp3` |
+| Przerwa po 5. pytaniu | `klakson.mp3` |
 | 50:50 | `fastest-finger.mp3` |
 | Pytanie do publiczności | `ask-the-audience.mp3` |
 | Telefon do przyjaciela | `phone-a-friend.mp3` |
 
-Muzyka napięcia wraca po zamknięciu koła ratunkowego (po 50:50 — gdy skończy się jego melodia). Logika jest w `src/audio/AudioManager.ts`.
+Muzyka do zastanawiania się wraca po zamknięciu koła ratunkowego (po 50:50 — gdy skończy się jego melodia). Logika jest w `src/audio/AudioManager.ts`.
 
 ## Architektura
 
@@ -120,12 +127,11 @@ src/
   host/                   pasek prowadzącego, timery, skróty i menu (pytania, ustawienia, zapisy)
 ```
 
-Stany gry: `IDLE → INTRO → QUESTION_INTRO → QUESTION_ACTIVE → ANSWER_LOCKED → ANSWER_CORRECT / ANSWER_INCORRECT → QUESTION_COMPLETED → …`, a na końcu `GAME_WON` (albo `GAME_LOST`, gdy gracz zrezygnuje). Pauza to osobna flaga, która zamraża liczniki, muzykę, wideo i animacje tła.
+Stany gry: `IDLE → INTRO → QUESTION_COMPLETED (5 s) → QUESTION_INTRO (odsłanianie A–D) → QUESTION_ACTIVE → ANSWER_LOCKED → ANSWER_CORRECT / ANSWER_INCORRECT → QUESTION_COMPLETED → …`, a na końcu `GAME_WON` (albo `GAME_LOST`, gdy gracz zrezygnuje). Pauza to osobna flaga, która zamraża liczniki, muzykę, wideo i animacje tła.
 
 ## Ograniczenia
 
 - Przeglądarki często blokują dźwięk przed pierwszym kliknięciem. Wtedy melodia powitalna zagra przy pierwszym kliknięciu albo naciśnięciu klawisza.
-- Film z odpowiedzią odtwarza się **po** ujawnieniu wyniku, bo wynik pokazuje się automatycznie 6 s po kliknięciu.
 - **Pliki z dysku** (wideo, obrazy) są zapisywane w IndexedDB tej przeglądarki. Eksport JSON zawiera tylko odnośniki do nich.
 - **YouTube**: wykrycie końca filmu zależy od YouTube. Gdyby nie zadziałało, zamknij film przyciskiem.
 - Komentarz prowadzącego jest widoczny tylko w edytorze pytań (plansza jest jedna i widzą ją wszyscy).

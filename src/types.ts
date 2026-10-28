@@ -108,6 +108,8 @@ export type GameEventType =
   | 'reset'
   | 'questionIn'
   | 'questionActive'
+  | 'answerShown'
+  | 'break'
   | 'fiftyApplied'
   | 'select'
   | 'lock'
@@ -162,6 +164,13 @@ export interface GameState {
   lifelineAt: number;
   /** Answers 50:50 will remove once its 8 s sequence finishes. */
   fiftyPending: AnswerIndex[] | null;
+  /** How many answers (A, B, C, D in order) the host has revealed for the current question. */
+  answersShown: number;
+  /** Question that appears after the transition music. */
+  nextIndex: number;
+  /** Ad break after question 5: the game is paused until the host resumes it. */
+  breakPending: boolean;
+  breakDone: boolean;
 }
 
 export interface HistoryEntry {

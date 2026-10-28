@@ -280,7 +280,7 @@ export function IntroOverlay({ data }: { data: AppData }) {
   );
 }
 
-export function PauseOverlay({ paused }: { paused: boolean }) {
+export function PauseOverlay({ paused, isBreak = false }: { paused: boolean; isBreak?: boolean }) {
   return (
     <AnimatePresence>
       {paused && (
@@ -301,7 +301,7 @@ export function PauseOverlay({ paused }: { paused: boolean }) {
           >
             GAME PAUSED
           </motion.div>
-          <div className="mt-2 font-display text-[32px] tracking-[0.4em] text-blue-200">PAUZA</div>
+          <div className="mt-2 font-display text-[32px] tracking-[0.4em] text-blue-200">{isBreak ? 'PRZERWA' : 'PAUZA'}</div>
         </motion.div>
       )}
     </AnimatePresence>

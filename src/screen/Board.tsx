@@ -1,35 +1,17 @@
-import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { AnswerIndex, GameState, MediaRef, Question } from '../types';
 import { ANSWER_LETTERS } from '../types';
-import { introTiming } from '../game/rules';
 import { MediaImage } from '../components/Media';
 
 export type AnswerVisual = 'hidden' | 'idle' | 'selected' | 'locked' | 'dim' | 'correct' | 'wrong' | 'removed';
 
-/** ms since the current phase started; frozen while paused. */
-export function usePhaseElapsed(g: GameState): number {
-  const calc = () => (g.paused ? g.pausedAt : Date.now()) - g.phaseStartedAt;
-  const [elapsed, setElapsed] = useState(calc);
-  useEffect(() => {
-    setElapsed(calc());
-    if (g.paused) return;
-    const id = window.setInterval(() => setElapsed(calc()), 50);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g.phaseStartedAt, g.paused, g.pausedAt]);
-  return elapsed;
-}
-
 /** Decide how each answer looks. The correct answer is only used once revealed. */
-export function answerVisual(g: GameState, q: Question, i: AnswerIndex, elapsed: number, speed: number): AnswerVisual {
+export function answerVisual(g: GameState, q: Question, i: AnswerIndex): AnswerVisual {
   if (g.removed.includes(i)) return 'removed';
   const sel = g.selected === i;
   switch (g.phase) {
-    case 'QUESTION_INTRO': {
-      const t = introTiming(speed);
-      return elapsed >= t.firstAnswerMs + i * t.staggerMs ? 'idle' : 'hidden';
-    }
+    case 'QUESTION_INTRO':
+      return i < g.answersShown ? 'idle' : 'hidden';
     case 'QUESTION_ACTIVE':
       return 'idle';
     case 'ANSWER_SELECTED':
@@ -69,10 +51,8 @@ export function QuestionBoard({
   showImage: boolean;
   onPick?: (i: AnswerIndex) => void;
 }) {
-  const elapsed = usePhaseElapsed(g);
-  const t = introTiming(speed);
   const leaving = g.phase === 'QUESTION_COMPLETED';
-  const questionVisible = g.phase !== 'QUESTION_INTRO' || elapsed >= t.questionMs * 0.6;
+  const questionVisible = true;
 
   return (
     <>
@@ -134,7 +114,7 @@ export function QuestionBoard({
             key={q.id + '-' + i}
             letter={ANSWER_LETTERS[i]}
             text={q.answers[i]}
-            visual={leaving ? 'hidden' : answerVisual(g, q, i, elapsed, speed)}
+            visual={leaving ? 'hidden' : answerVisual(g, q, i)}
             left={80 + col * 670}
             top={790 + row * 115}
             speed={speed}

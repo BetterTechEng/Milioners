@@ -13,7 +13,9 @@ export type TrackId =
   | 'fifty'
   | 'audience'
   | 'music64000'
-  | 'music500000';
+  | 'music125000'
+  | 'music500000'
+  | 'klakson';
 
 const FILES: Record<TrackId, string> = {
   arriving: 'candidates-arriving.mp3',
@@ -27,17 +29,22 @@ const FILES: Record<TrackId, string> = {
   fifty: 'fastest-finger.mp3',
   audience: 'ask-the-audience.mp3',
   music64000: 'music-64000.mp3',
+  music125000: 'music-125000.mp3',
   music500000: 'music-500000.mp3',
+  klakson: 'klakson.mp3',
 };
 
-/** Only the two "thinking" beds loop; every other track plays once. */
-const LOOPING: TrackId[] = ['music64000', 'music500000'];
+/**
+ * Loops: the thinking beds, and final answer, which keeps playing until the host
+ * reveals the result. Every other track plays once.
+ */
+const LOOPING: TrackId[] = ['music64000', 'music125000', 'music500000', 'finalAnswer'];
 
-/** Thinking music by question number: 6–8 → 64 000, 9+ → 500 000, none for 1–5. */
-export function thinkingTrack(questionNumber: number): TrackId | null {
+/** Thinking music by question number: 1–5 → 64 000, 6–8 → 125 000–250 000, 9+ → 500 000. */
+export function thinkingTrack(questionNumber: number): TrackId {
   if (questionNumber >= 9) return 'music500000';
-  if (questionNumber >= 6) return 'music64000';
-  return null;
+  if (questionNumber >= 6) return 'music125000';
+  return 'music64000';
 }
 
 /**
@@ -139,7 +146,7 @@ class AudioManagerImpl {
   /** Thinking music that should be playing right now, if any. */
   desiredLoop(data: AppData): TrackId | null {
     const g = data.game;
-    if (g.phase !== 'QUESTION_ACTIVE' || g.activeLifeline || g.video || g.paused) return null;
+    if ((g.phase !== 'QUESTION_INTRO' && g.phase !== 'QUESTION_ACTIVE') || g.activeLifeline || g.video || g.paused) return null;
     return thinkingTrack(g.index + 1);
   }
 
@@ -152,23 +159,21 @@ class AudioManagerImpl {
   }
 
   handleEvent(ev: GameEvent, data: AppData) {
-    const source = ev.data?.source;
     switch (ev.type) {
       case 'gameStart':
         this.play('mainTheme');
         break;
+      // The thinking music starts as soon as the question appears.
       case 'questionIn':
-        if (source === 'first') this.play('letsPlay');
-        else if (source !== 'advance') this.stop();
+        this.play(thinkingTrack(data.game.index + 1));
         break;
+      // Transition music: only its first 5 s are heard, the question then replaces it.
       case 'next':
-        this.play('newQuestion');
+        this.play(ev.data?.first ? 'letsPlay' : 'newQuestion');
         break;
-      case 'questionActive': {
-        const loop = thinkingTrack(data.game.index + 1);
-        if (loop) this.play(loop);
+      case 'break':
+        this.playBreak();
         break;
-      }
       case 'lock':
         this.play('finalAnswer');
         break;
@@ -211,6 +216,19 @@ class AudioManagerImpl {
         this.setPaused(false);
         break;
     }
+  }
+
+  /** Ad break: everything stops, the klakson plays once and the game stays paused. */
+  private playBreak() {
+    this.stop();
+    this.paused = true;
+    const el = this.el('klakson');
+    el.loop = false;
+    el.volume = this.volume;
+    el.muted = this.muted;
+    el.currentTime = 0;
+    this.current = { id: 'klakson', el };
+    el.play().catch(() => undefined);
   }
 
   /** Play the arrival music when the game page opens (retried on first click if blocked). */

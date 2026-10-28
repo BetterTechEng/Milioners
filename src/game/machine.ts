@@ -10,19 +10,19 @@ import type {
 import { currentWinnings, isThreshold, levelCount, playQuestions, phoneRemainingMs } from './rules';
 
 /** Fixed show timings (ms), counted from the event that starts them. */
-export const REVEAL_AFTER_MS = 6000;
+export const TRANSITION_MS = 5000;
 export const FIFTY_AFTER_MS = 8000;
 export const AUDIENCE_AFTER_MS = 32000;
 
 export type Action =
   | { type: 'START_GAME'; participant?: string }
   | { type: 'NEXT_QUESTION' }
-  | { type: 'ANSWERS_SHOWN' }
+  | { type: 'SHOW_ANSWER' }
   | { type: 'ADVANCE' }
   | { type: 'PREV_QUESTION' }
   | { type: 'SKIP_QUESTION' }
   | { type: 'SELECT'; answer: AnswerIndex }
-  | { type: 'RESOLVE' }
+  | { type: 'REVEAL' }
   | { type: 'END_GAME' }
   | { type: 'PLAY_VIDEO'; which: 'answer' | 'question' }
   | { type: 'VIDEO_CONTROL'; playing?: boolean; seekTo?: number; maximized?: boolean }
@@ -70,8 +70,15 @@ export function initialGame(participant = ''): GameState {
     pausedAt: 0,
     lifelineAt: 0,
     fiftyPending: null,
+    answersShown: 0,
+    nextIndex: 0,
+    breakPending: false,
+    breakDone: false,
   };
 }
+
+/** Ad break comes after this 0-based question (question 5). */
+const BREAK_AFTER_INDEX = 4;
 
 const ACTIONS_WHILE_PAUSED = new Set<Action['type']>(['RESUME', 'TOGGLE_MUSIC', 'NEW_GAME', 'LOAD_GAME', 'VIDEO_CONTROL']);
 
@@ -102,6 +109,7 @@ function freshQuestion(g: GameState, index: number): GameState {
     videoReturnPhase: null,
     lifelineAt: 0,
     fiftyPending: null,
+    answersShown: 0,
   };
 }
 
@@ -143,23 +151,32 @@ export function reduceGame(data: AppData, action: Action): GameState {
     }
 
     case 'NEXT_QUESTION': {
-      if (g.phase === 'INTRO') return emit(toPhase(freshQuestion(g, 0), 'QUESTION_INTRO'), 'questionIn', { source: 'first' });
+      // The question appears only after the 5 s transition music.
+      if (g.phase === 'INTRO') return emit(toPhase({ ...g, nextIndex: 0 }, 'QUESTION_COMPLETED'), 'next', { first: true });
       if (g.phase !== 'ANSWER_CORRECT' && g.phase !== 'ANSWER_INCORRECT') return g;
       if (g.testMode) {
         return emit({ ...initialGame(g.participant), musicOn: g.musicOn, eventSeq: g.eventSeq }, 'reset');
       }
       // A wrong answer never ends the game; after the last question the show ends.
       if (g.index >= total - 1) return finishGame(data, g);
-      return emit(toPhase(g, 'QUESTION_COMPLETED'), 'next');
+      // After question 5: klakson, the game pauses until the host resumes it.
+      if (g.index === BREAK_AFTER_INDEX && !g.breakDone) {
+        return emit({ ...g, paused: true, pausedAt: Date.now(), breakPending: true, breakDone: true }, 'break');
+      }
+      return emit(toPhase({ ...g, nextIndex: g.index + 1 }, 'QUESTION_COMPLETED'), 'next');
     }
 
-    case 'ANSWERS_SHOWN':
-      if (g.phase !== 'QUESTION_INTRO') return g;
-      return emit(toPhase(g, 'QUESTION_ACTIVE'), 'questionActive');
+    // The host reveals the answers one by one: A, B, C, D.
+    case 'SHOW_ANSWER': {
+      if (g.phase !== 'QUESTION_INTRO' || g.answersShown >= 4) return g;
+      const shown = g.answersShown + 1;
+      const next = emit({ ...g, answersShown: shown }, 'answerShown', { answer: shown - 1 });
+      return shown === 4 ? emit(toPhase(next, 'QUESTION_ACTIVE'), 'questionActive') : next;
+    }
 
     case 'ADVANCE': {
       if (g.phase !== 'QUESTION_COMPLETED') return g;
-      const index = Math.min(g.index + 1, total - 1);
+      const index = Math.min(g.nextIndex, total - 1);
       return emit(toPhase(freshQuestion(g, index), 'QUESTION_INTRO'), 'questionIn', { source: 'advance' });
     }
 
@@ -174,7 +191,7 @@ export function reduceGame(data: AppData, action: Action): GameState {
       const skippable: Phase[] = ['QUESTION_INTRO', 'QUESTION_ACTIVE', 'ANSWER_LOCKED'];
       if (!skippable.includes(g.phase) || g.index >= total - 1 || g.testMode || !q) return g;
       const results = setResult(g.results, { questionId: q.id, index: g.index, outcome: 'skipped', answer: null });
-      return emit(toPhase({ ...freshQuestion(g, g.index), results }, 'QUESTION_COMPLETED'), 'next');
+      return emit(toPhase({ ...freshQuestion(g, g.index), results, nextIndex: g.index + 1 }, 'QUESTION_COMPLETED'), 'next');
     }
 
     // Clicking an answer locks it at once; it cannot be changed afterwards.
@@ -183,7 +200,8 @@ export function reduceGame(data: AppData, action: Action): GameState {
       return emit(toPhase({ ...g, selected: action.answer }, 'ANSWER_LOCKED'), 'lock', { answer: action.answer });
     }
 
-    case 'RESOLVE': {
+    // The host reveals the result; final answer music plays until then.
+    case 'REVEAL': {
       if (g.phase !== 'ANSWER_LOCKED' || g.selected === null || !q) return g;
       const correct = g.selected === q.correct;
       const results = setResult(g.results, {
@@ -210,9 +228,10 @@ export function reduceGame(data: AppData, action: Action): GameState {
       if (!q || g.activeLifeline) return g;
       const ref = action.which === 'answer' ? q.answerVideo : q.video;
       if (!ref) return g;
-      // The answer is revealed automatically 6 s after the click, so the answer video plays after the reveal.
       const allowed: Phase[] =
-        action.which === 'answer' ? ['ANSWER_CORRECT', 'ANSWER_INCORRECT'] : ['QUESTION_ACTIVE', 'ANSWER_CORRECT', 'ANSWER_INCORRECT'];
+        action.which === 'answer'
+          ? ['ANSWER_LOCKED', 'ANSWER_CORRECT', 'ANSWER_INCORRECT']
+          : ['QUESTION_ACTIVE', 'ANSWER_LOCKED', 'ANSWER_CORRECT', 'ANSWER_INCORRECT'];
       if (!allowed.includes(g.phase)) return g;
       return emit(
         toPhase(
@@ -344,6 +363,11 @@ export function reduceGame(data: AppData, action: Action): GameState {
       const now = Date.now();
       const shift = now - g.pausedAt;
       const phone = g.phone && g.phone.running ? { ...g.phone, startedAt: now } : g.phone;
+      // End of the ad break: carry on to the next question.
+      if (g.breakPending) {
+        const resumed = emit({ ...g, paused: false, pausedAt: 0, breakPending: false }, 'resume');
+        return emit(toPhase({ ...resumed, nextIndex: g.index + 1 }, 'QUESTION_COMPLETED'), 'next');
+      }
       return emit(
         {
           ...g,

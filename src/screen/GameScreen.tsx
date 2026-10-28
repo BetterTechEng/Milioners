@@ -167,7 +167,7 @@ export function GameScreen() {
           <TransitionWipe active={g.phase === 'QUESTION_COMPLETED'} />
           <VideoOverlay data={data} />
           <EndOverlay data={data} />
-          <PauseOverlay paused={g.paused} />
+          <PauseOverlay paused={g.paused} isBreak={g.breakPending} />
 
         </div>
       </Stage>
