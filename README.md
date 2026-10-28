@@ -64,7 +64,7 @@ Uczestnik klika ikonę koła na górze planszy.
 
 - **50:50**: gra melodia, a dokładnie 8 s później znikają dwie błędne odpowiedzi.
 - **Pytanie do publiczności**: gra melodia, a dokładnie 32 s później pojawiają się wyniki A–D. Na razie są losowe i zawsze sumują się do 100%. Prowadzący zamyka okno przyciskiem na pasku.
-- **Telefon do przyjaciela**: gra melodia (raz) i od razu startuje 30-sekundowe odliczanie. Na pasku: pauza, reset, zakończenie rozmowy, zamknięcie.
+- **Telefon do przyjaciela**: gra melodia (46,6 s). Najpierw „Łączenie…”, potem 30-sekundowe odliczanie, które kończy się dokładnie razem z muzyką. Pauza licznika wstrzymuje też muzykę. Na pasku: pauza / wznowienie licznika, zakończenie rozmowy, zamknięcie.
 
 ## Pytania
 

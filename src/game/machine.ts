@@ -12,6 +12,8 @@ import { currentWinnings, isThreshold, levelCount, playQuestions, phoneRemaining
 /** Fixed show timings (ms), counted from the event that starts them. */
 export const TRANSITION_MS = 5000;
 export const FIFTY_AFTER_MS = 8000;
+/** Length of phone-a-friend.mp3: the countdown is timed to end exactly with it. */
+export const PHONE_MUSIC_MS = 46600;
 export const AUDIENCE_AFTER_MS = 32000;
 
 export type Action =
@@ -33,7 +35,8 @@ export type Action =
   | { type: 'AUDIENCE_START'; results: [number, number, number, number] }
   | { type: 'AUDIENCE_SHOW' }
   | { type: 'PHONE_START' }
-  | { type: 'PHONE_TIMER'; cmd: 'start' | 'pause' | 'reset' }
+  | { type: 'PHONE_CONNECT' }
+  | { type: 'PHONE_TIMER'; cmd: 'start' | 'pause' }
   | { type: 'PHONE_END' }
   | { type: 'LIFELINE_CLOSE' }
   | { type: 'PAUSE' }
@@ -309,35 +312,39 @@ export function reduceGame(data: AppData, action: Action): GameState {
       return emit({ ...g, audience: { ...g.audience, status: 'results' } }, 'audienceResults');
     }
 
-    // Phone: the call connects straight away and the countdown starts.
+    // Phone: the music starts at once; the countdown starts so that it ends exactly with the music.
     case 'PHONE_START': {
       if (!lifelineAllowed(data, 'phone')) return g;
-      const now = Date.now();
+      const countdown = Math.min(data.settings.phoneSeconds * 1000, PHONE_MUSIC_MS);
       return emit(
         {
           ...g,
           activeLifeline: 'phone',
-          phone: { status: 'connected', running: true, remainingMs: data.settings.phoneSeconds * 1000, startedAt: now },
-          lifelineAt: now,
+          phone: { status: 'calling', running: false, remainingMs: countdown, startedAt: 0 },
+          lifelineAt: Date.now(),
           lifelinesUsed: { ...g.lifelinesUsed, phone: true },
         },
         'phoneStart',
       );
     }
 
+    case 'PHONE_CONNECT': {
+      const p = g.phone;
+      if (g.activeLifeline !== 'phone' || !p || p.status !== 'calling') return g;
+      return emit({ ...g, phone: { ...p, status: 'connected', running: true, startedAt: Date.now() } }, 'phoneConnected');
+    }
+
+    // Pausing the countdown also pauses the music, so both still end together.
     case 'PHONE_TIMER': {
       const p = g.phone;
       if (g.activeLifeline !== 'phone' || !p || p.status !== 'connected') return g;
       const now = Date.now();
       if (action.cmd === 'start') {
         if (p.running || phoneRemainingMs(p, now) <= 0) return g;
-        return { ...g, phone: { ...p, running: true, startedAt: now } };
+        return emit({ ...g, phone: { ...p, running: true, startedAt: now } }, 'phoneTimerStart');
       }
-      if (action.cmd === 'pause') {
-        if (!p.running) return g;
-        return { ...g, phone: { ...p, running: false, remainingMs: phoneRemainingMs(p, now) } };
-      }
-      return { ...g, phone: { ...p, running: false, remainingMs: data.settings.phoneSeconds * 1000, startedAt: 0 } };
+      if (!p.running) return g;
+      return emit({ ...g, phone: { ...p, running: false, remainingMs: phoneRemainingMs(p, now) } }, 'phoneTimerPause');
     }
 
     case 'PHONE_END': {

@@ -112,8 +112,7 @@ export function HostBar({ data, onFullscreen, menuOpen, setMenuOpen }: { data: A
                 ) : (
                   <Small icon={<Play size={12} />} disabled={!can({ type: 'PHONE_TIMER', cmd: 'start' })} onClick={() => act({ type: 'PHONE_TIMER', cmd: 'start' })}>Wznów licznik</Small>
                 ))}
-              {g.phone.status === 'connected' && <Small icon={<RotateCcw size={12} />} onClick={() => act({ type: 'PHONE_TIMER', cmd: 'reset' })}>Reset</Small>}
-              {g.phone.status === 'connected' && <Small tone="red" icon={<PhoneOff size={12} />} onClick={() => act({ type: 'PHONE_END' })}>Zakończ rozmowę</Small>}
+              {g.phone.status !== 'ended' && <Small tone="red" icon={<PhoneOff size={12} />} onClick={() => act({ type: 'PHONE_END' })}>Zakończ rozmowę</Small>}
               <Small icon={<X size={12} />} onClick={() => act({ type: 'LIFELINE_CLOSE' })}>Zamknij telefon</Small>
             </>
           )}

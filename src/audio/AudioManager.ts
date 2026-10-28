@@ -197,6 +197,16 @@ class AudioManagerImpl {
       case 'phoneStart':
         this.play('phone');
         break;
+      // The countdown and the phone music run together.
+      case 'phoneTimerPause':
+        if (this.currentId === 'phone') this.current?.el.pause();
+        break;
+      case 'phoneTimerStart':
+        if (this.currentId === 'phone' && !this.paused) this.current?.el.play().catch(() => undefined);
+        break;
+      case 'phoneEnd':
+        if (this.currentId === 'phone') this.stop();
+        break;
       case 'lifelineClose':
         this.syncLoop(data, true);
         break;

@@ -123,6 +123,8 @@ export type GameEventType =
   | 'fifty'
   | 'phoneStart'
   | 'phoneConnected'
+  | 'phoneTimerPause'
+  | 'phoneTimerStart'
   | 'phoneEnd'
   | 'audienceStart'
   | 'audienceResults'
