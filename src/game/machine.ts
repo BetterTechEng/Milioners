@@ -12,8 +12,14 @@ import { currentWinnings, isThreshold, levelCount, playQuestions, phoneRemaining
 /** Fixed show timings (ms), counted from the event that starts them. */
 export const TRANSITION_MS = 5000;
 export const FIFTY_AFTER_MS = 8000;
-/** Length of phone-a-friend.mp3: the countdown is timed to end exactly with it. */
-export const PHONE_MUSIC_MS = 46600;
+/**
+ * Phone a friend: the countdown music starts at 12 s of phone-a-friend.mp3. Its 30 ticks fall
+ * at 13.14 s, 14.14 s … 42.08 s, so the clock shows 30 for the first 1.14 s and then drops by one
+ * on every tick, reaching 0 on the last one.
+ */
+export const PHONE_MUSIC_FROM_S = 12;
+export const PHONE_SECONDS = 30;
+export const PHONE_COUNTDOWN_MS = 30140;
 export const AUDIENCE_AFTER_MS = 32000;
 
 export type Action =
@@ -36,6 +42,7 @@ export type Action =
   | { type: 'AUDIENCE_SHOW' }
   | { type: 'PHONE_START' }
   | { type: 'PHONE_CONNECT' }
+  | { type: 'PHONE_SYNC'; musicMs: number; at: number }
   | { type: 'PHONE_TIMER'; cmd: 'start' | 'pause' }
   | { type: 'PHONE_END' }
   | { type: 'LIFELINE_CLOSE' }
@@ -312,10 +319,10 @@ export function reduceGame(data: AppData, action: Action): GameState {
       return emit({ ...g, audience: { ...g.audience, status: 'results' } }, 'audienceResults');
     }
 
-    // Phone: the music starts at once; the countdown starts so that it ends exactly with the music.
+    // Phone: the intro music loops until the host clicks "Włącz odliczanie".
     case 'PHONE_START': {
       if (!lifelineAllowed(data, 'phone')) return g;
-      const countdown = Math.min(data.settings.phoneSeconds * 1000, PHONE_MUSIC_MS);
+      const countdown = PHONE_COUNTDOWN_MS;
       return emit(
         {
           ...g,
@@ -334,6 +341,16 @@ export function reduceGame(data: AppData, action: Action): GameState {
       return emit({ ...g, phone: { ...p, status: 'connected', running: true, startedAt: Date.now() } }, 'phoneConnected');
     }
 
+    // Align the clock with the moment the countdown music really started playing.
+    // musicMs = how far the countdown music has played past 12 s at time `at`.
+    case 'PHONE_SYNC': {
+      const p = g.phone;
+      if (g.paused || g.activeLifeline !== 'phone' || !p || p.status !== 'connected' || !p.running) return g;
+      const startedAt = action.at - (p.remainingMs - (PHONE_COUNTDOWN_MS - action.musicMs));
+      if (Math.abs(startedAt - p.startedAt) < 15) return g;
+      return { ...g, phone: { ...p, startedAt } };
+    }
+
     // Pausing the countdown also pauses the music, so both still end together.
     case 'PHONE_TIMER': {
       const p = g.phone;
@@ -350,7 +367,9 @@ export function reduceGame(data: AppData, action: Action): GameState {
     case 'PHONE_END': {
       const p = g.phone;
       if (g.activeLifeline !== 'phone' || !p || p.status === 'ended') return g;
-      return emit({ ...g, phone: { ...p, status: 'ended', running: false, remainingMs: phoneRemainingMs(p, Date.now()) } }, 'phoneEnd');
+      const left = phoneRemainingMs(p, Date.now());
+      // At time-out the music plays its own ending; ending the call early stops it.
+      return emit({ ...g, phone: { ...p, status: 'ended', running: false, remainingMs: left } }, 'phoneEnd', { timeout: left <= 0 });
     }
 
     case 'LIFELINE_CLOSE':

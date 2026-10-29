@@ -64,7 +64,7 @@ Uczestnik klika ikonę koła na górze planszy.
 
 - **50:50**: gra melodia, a dokładnie 8 s później znikają dwie błędne odpowiedzi.
 - **Pytanie do publiczności**: gra melodia, a dokładnie 32 s później pojawiają się wyniki A–D. Na razie są losowe i zawsze sumują się do 100%. Prowadzący zamyka okno przyciskiem na pasku.
-- **Telefon do przyjaciela**: gra melodia (46,6 s). Najpierw „Łączenie…”, potem 30-sekundowe odliczanie, które kończy się dokładnie razem z muzyką. Pauza licznika wstrzymuje też muzykę. Na pasku: pauza / wznowienie licznika, zakończenie rozmowy, zamknięcie.
+- **Telefon do przyjaciela**: w pętli gra pierwsze 11 s melodii. Prowadzący klika **Włącz odliczanie**: startuje licznik 30 s i melodia od 12 s. Licznik zmienia się razem z tyknięciami melodii (zegar dostraja się do faktycznego startu dźwięku). Pauza licznika wstrzymuje też muzykę; po 0 melodia gra do końca. Na pasku: pauza / wznowienie licznika, zakończenie rozmowy, zamknięcie.
 
 ## Pytania
 
@@ -92,7 +92,7 @@ Format JSON:
 
 ## Muzyka
 
-Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna melodia: nowa zatrzymuje poprzednią. W pętli grają tylko muzyki do zastanawiania się i „final answer”.
+Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna melodia: nowa zatrzymuje poprzednią. W pętli grają tylko muzyki do zastanawiania się, „final answer” i oczekiwanie przy telefonie.
 
 | Zdarzenie | Plik |
 |---|---|
@@ -108,7 +108,8 @@ Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna
 | Przerwa po 5. pytaniu | `klakson.mp3` |
 | 50:50 | `fastest-finger.mp3` |
 | Pytanie do publiczności | `ask-the-audience.mp3` |
-| Telefon do przyjaciela | `phone-a-friend.mp3` |
+| Telefon do przyjaciela: oczekiwanie (pętla 11 s) | `phone-intro.mp3` (pierwsze 11 s `phone-a-friend.mp3`) |
+| Telefon: „Włącz odliczanie” (od 12 s, razem z licznikiem) | `phone-a-friend.mp3` |
 
 Muzyka do zastanawiania się wraca po zamknięciu koła ratunkowego (po 50:50 — gdy skończy się jego melodia). Logika jest w `src/audio/AudioManager.ts`.
 

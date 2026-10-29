@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, animate } from 'motion/react';
 import { Pause, Phone, PhoneOff, Users } from 'lucide-react';
-import type { AppData, GameState, Question, Settings } from '../types';
+import type { AppData, GameState, Question } from '../types';
 import { ANSWER_LETTERS } from '../types';
 import { formatMoney, isThreshold, lastCorrectLevel, prizeAt } from '../game/rules';
-import { phoneLeftMs } from '../game/machine';
+import { PHONE_SECONDS, phoneLeftMs } from '../game/machine';
 import { Emblem } from './Studio';
 
 /* ---------- Audience ---------- */
@@ -90,7 +90,7 @@ export function AudienceOverlay({ g }: { g: GameState }) {
 
 /* ---------- Phone a friend ---------- */
 
-export function PhoneOverlay({ g, settings }: { g: GameState; settings: Settings }) {
+export function PhoneOverlay({ g }: { g: GameState }) {
   const p = g.phone;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -100,13 +100,14 @@ export function PhoneOverlay({ g, settings }: { g: GameState; settings: Settings
   }, [p?.running, g.paused]);
 
   const leftMs = p ? phoneLeftMs(g, now) : 0;
-  const secs = Math.ceil(leftMs / 1000);
-  const total = settings.phoneSeconds;
+  // The countdown has a short lead-in before the first tick, so it never shows more than 30.
+  const secs = Math.min(PHONE_SECONDS, Math.ceil(leftMs / 1000));
+  const total = PHONE_SECONDS;
 
   const urgent = secs <= 5 && p?.status === 'connected';
   const R = 120;
   const C = 2 * Math.PI * R;
-  const frac = total > 0 ? leftMs / (total * 1000) : 0;
+  const frac = Math.min(1, leftMs / (total * 1000));
 
   return (
     <AnimatePresence>

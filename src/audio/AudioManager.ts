@@ -1,4 +1,5 @@
 import type { AppData, GameEvent } from '../types';
+import { PHONE_MUSIC_FROM_S } from '../game/machine';
 
 /** The show's MP3 tracks (public/audio). */
 export type TrackId =
@@ -10,6 +11,7 @@ export type TrackId =
   | 'letsPlay'
   | 'newQuestion'
   | 'phone'
+  | 'phoneIntro'
   | 'fifty'
   | 'audience'
   | 'music64000'
@@ -26,6 +28,7 @@ const FILES: Record<TrackId, string> = {
   letsPlay: 'lets-play.mp3',
   newQuestion: 'new-question.mp3',
   phone: 'phone-a-friend.mp3',
+  phoneIntro: 'phone-intro.mp3',
   fifty: 'fastest-finger.mp3',
   audience: 'ask-the-audience.mp3',
   music64000: 'music-64000.mp3',
@@ -38,7 +41,7 @@ const FILES: Record<TrackId, string> = {
  * Loops: the thinking beds, and final answer, which keeps playing until the host
  * reveals the result. Every other track plays once.
  */
-const LOOPING: TrackId[] = ['music64000', 'music125000', 'music500000', 'finalAnswer'];
+const LOOPING: TrackId[] = ['music64000', 'music125000', 'music500000', 'finalAnswer', 'phoneIntro'];
 
 /** Thinking music by question number: 1–5 → 64 000, 6–8 → 125 000–250 000, 9+ → 500 000. */
 export function thinkingTrack(questionNumber: number): TrackId {
@@ -62,6 +65,7 @@ class AudioManagerImpl {
   /** Track that the browser blocked; retried on the first user interaction. */
   private blocked: TrackId | null = null;
   private onIdle: (() => void) | null = null;
+  private onPhoneSync: ((musicMs: number, at: number) => void) | null = null;
 
   constructor() {
     const retry = () => {
@@ -96,6 +100,21 @@ class AudioManagerImpl {
     this.onIdle = fn;
   }
 
+  /** Called when the countdown music actually (re)starts, with its position past 12 s. */
+  setPhoneSyncHandler(fn: (musicMs: number, at: number) => void) {
+    this.onPhoneSync = fn;
+  }
+
+  private syncPhoneClock() {
+    const el = this.current?.id === 'phone' ? this.current.el : null;
+    if (!el) return;
+    const fire = () => {
+      if (this.current?.el !== el) return;
+      this.onPhoneSync?.((el.currentTime - PHONE_MUSIC_FROM_S) * 1000, Date.now());
+    };
+    el.addEventListener('playing', () => window.setTimeout(fire, 60), { once: true });
+  }
+
   get currentId(): TrackId | null {
     return this.current?.id ?? null;
   }
@@ -110,14 +129,14 @@ class AudioManagerImpl {
     this.els.forEach((el) => (el.muted = muted));
   }
 
-  play(id: TrackId) {
+  play(id: TrackId, fromSeconds = 0) {
     this.stop();
     this.blocked = null;
     const el = this.el(id);
     el.loop = LOOPING.includes(id);
     el.volume = this.volume;
     el.muted = this.muted;
-    el.currentTime = 0;
+    el.currentTime = fromSeconds;
     this.current = { id, el };
     if (this.paused) return;
     el.play().catch((err: unknown) => {
@@ -194,18 +213,27 @@ class AudioManagerImpl {
       case 'audienceStart':
         this.play('audience');
         break;
+      // Phone: the first 11 s loop while the call is set up…
       case 'phoneStart':
-        this.play('phone');
+        this.play('phoneIntro');
+        break;
+      // …then the countdown music from 12 s, whose ticks match the clock.
+      case 'phoneConnected':
+        this.play('phone', PHONE_MUSIC_FROM_S);
+        this.syncPhoneClock();
         break;
       // The countdown and the phone music run together.
       case 'phoneTimerPause':
         if (this.currentId === 'phone') this.current?.el.pause();
         break;
       case 'phoneTimerStart':
-        if (this.currentId === 'phone' && !this.paused) this.current?.el.play().catch(() => undefined);
+        if (this.currentId === 'phone' && !this.paused) {
+          this.syncPhoneClock();
+          this.current?.el.play().catch(() => undefined);
+        }
         break;
       case 'phoneEnd':
-        if (this.currentId === 'phone') this.stop();
+        if (!ev.data?.timeout && (this.currentId === 'phone' || this.currentId === 'phoneIntro')) this.stop();
         break;
       case 'lifelineClose':
         this.syncLoop(data, true);
@@ -223,6 +251,7 @@ class AudioManagerImpl {
         this.setPaused(true);
         break;
       case 'resume':
+        if (this.currentId === 'phone') this.syncPhoneClock();
         this.setPaused(false);
         break;
     }

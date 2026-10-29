@@ -106,6 +106,9 @@ export function HostBar({ data, onFullscreen, menuOpen, setMenuOpen }: { data: A
           {/* Lifeline controls */}
           {g.activeLifeline === 'phone' && g.phone && (
             <>
+              {g.phone.status === 'calling' && (
+                <Small tone="gold" icon={<Play size={12} />} onClick={() => act({ type: 'PHONE_CONNECT' })}>Włącz odliczanie</Small>
+              )}
               {g.phone.status === 'connected' &&
                 (g.phone.running ? (
                   <Small icon={<Pause size={12} />} onClick={() => act({ type: 'PHONE_TIMER', cmd: 'pause' })}>Pauza licznika</Small>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { AnswerIndex, AppData } from '../types';
 import { store } from '../game/store';
 import { levelCount } from '../game/rules';
-import { AUDIENCE_AFTER_MS, FIFTY_AFTER_MS, PHONE_MUSIC_MS, TRANSITION_MS, phoneLeftMs, type Action } from '../game/machine';
+import { AUDIENCE_AFTER_MS, FIFTY_AFTER_MS, TRANSITION_MS, phoneLeftMs, type Action } from '../game/machine';
 
 /**
  * Timed transitions, each counted from the event that started it:
@@ -54,22 +54,18 @@ export function useDirector(data: AppData) {
     let id = 0;
     if (g.activeLifeline === 'fifty' && g.fiftyPending) {
       id = window.setTimeout(() => store.dispatch({ type: 'FIFTY_APPLY' }), Math.max(0, FIFTY_AFTER_MS - elapsed));
-    } else if (g.activeLifeline === 'phone' && g.phone?.status === 'calling') {
-      // Start the countdown when exactly its length of music is left.
-      const at = PHONE_MUSIC_MS - g.phone.remainingMs;
-      id = window.setTimeout(() => store.dispatch({ type: 'PHONE_CONNECT' }), Math.max(0, at - elapsed));
     } else if (g.activeLifeline === 'audience' && g.audience?.status === 'voting') {
       id = window.setTimeout(() => store.dispatch({ type: 'AUDIENCE_SHOW' }), Math.max(0, AUDIENCE_AFTER_MS - elapsed));
     }
     return () => window.clearTimeout(id);
-  }, [g.activeLifeline, g.lifelineAt, g.paused, g.fiftyPending, g.audience?.status, g.phone?.status, g.phone?.remainingMs]);
+  }, [g.activeLifeline, g.lifelineAt, g.paused, g.fiftyPending, g.audience?.status]);
 
   // Phone time-out ends the call automatically.
   const phone = g.phone;
   useEffect(() => {
     if (!phone || phone.status !== 'connected' || !phone.running || g.paused) return;
     const left = phoneLeftMs(g);
-    const id = window.setTimeout(() => store.dispatch({ type: 'PHONE_END' }), left + 50);
+    const id = window.setTimeout(() => store.dispatch({ type: 'PHONE_END' }), left + 20);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone?.status, phone?.running, phone?.startedAt, phone?.remainingMs, g.paused]);

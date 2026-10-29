@@ -112,13 +112,11 @@ export function SettingsTab({ data }: { data: AppData }) {
           </div>
         </Card>
 
-        <Card title="Koła ratunkowe i telefon">
+        <Card title="Koła ratunkowe">
           <Toggle label="50:50" checked={s.lifelinesEnabled.fifty} onChange={(v) => set({ lifelinesEnabled: { ...s.lifelinesEnabled, fifty: v } })} />
           <Toggle label="Telefon do przyjaciela" checked={s.lifelinesEnabled.phone} onChange={(v) => set({ lifelinesEnabled: { ...s.lifelinesEnabled, phone: v } })} />
           <Toggle label="Pytanie do publiczności" checked={s.lifelinesEnabled.audience} onChange={(v) => set({ lifelinesEnabled: { ...s.lifelinesEnabled, audience: v } })} />
-          <div className="mt-3">
-            <Slider label="Czas telefonu" value={s.phoneSeconds} min={10} max={120} step={5} onChange={(v) => set({ phoneSeconds: v })} format={(v) => `${v} s`} />
-          </div>
+          <p className="mt-3 text-xs text-blue-300/70">Odliczanie telefonu trwa 30 s i jest zgrane z tykaniem melodii.</p>
         </Card>
 
         <Card title="Przebieg i animacje">

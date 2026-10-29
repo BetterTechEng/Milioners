@@ -74,6 +74,7 @@ export function GameScreen() {
     AudioManager.setVolume(d.settings.volume.master, d.settings.volume.music);
     AudioManager.setMuted(!d.game.musicOn);
     AudioManager.setIdleHandler(() => AudioManager.syncLoop(dataRef.current));
+    AudioManager.setPhoneSyncHandler((musicMs, at) => store.dispatch({ type: 'PHONE_SYNC', musicMs, at }));
     if (d.game.paused) AudioManager.setPaused(true);
     if (AudioManager.desiredLoop(d)) AudioManager.syncLoop(d);
     else AudioManager.playArrival();
@@ -163,7 +164,7 @@ export function GameScreen() {
 
           <ResultBanner data={data} q={q} />
           <AudienceOverlay g={g} />
-          <PhoneOverlay g={g} settings={s} />
+          <PhoneOverlay g={g} />
           <TransitionWipe active={g.phase === 'QUESTION_COMPLETED'} />
           <VideoOverlay data={data} />
           <EndOverlay data={data} />
