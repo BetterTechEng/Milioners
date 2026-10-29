@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { AnswerIndex, GameState, MediaRef, Question } from '../types';
 import { ANSWER_LETTERS } from '../types';
+import { lifelineBlocksAnswer } from '../game/machine';
 import { MediaImage } from '../components/Media';
 
 export type AnswerVisual = 'hidden' | 'idle' | 'selected' | 'locked' | 'dim' | 'correct' | 'wrong' | 'removed';
@@ -118,7 +119,7 @@ export function QuestionBoard({
             left={80 + col * 670}
             top={790 + row * 115}
             speed={speed}
-            onPick={onPick && g.phase === 'QUESTION_ACTIVE' && !g.activeLifeline && !g.removed.includes(i) ? () => onPick(i) : undefined}
+            onPick={onPick && g.phase === 'QUESTION_ACTIVE' && !lifelineBlocksAnswer(g) && !g.removed.includes(i) ? () => onPick(i) : undefined}
           />
         );
       })}

@@ -205,9 +205,11 @@ export function reduceGame(data: AppData, action: Action): GameState {
     }
 
     // Clicking an answer locks it at once; it cannot be changed afterwards.
+    // An open phone call or audience result does not block the answer: it closes when the player answers.
     case 'SELECT': {
-      if (g.phase !== 'QUESTION_ACTIVE' || g.activeLifeline || g.removed.includes(action.answer)) return g;
-      return emit(toPhase({ ...g, selected: action.answer }, 'ANSWER_LOCKED'), 'lock', { answer: action.answer });
+      if (g.phase !== 'QUESTION_ACTIVE' || lifelineBlocksAnswer(g) || g.removed.includes(action.answer)) return g;
+      const next = { ...g, selected: action.answer, activeLifeline: null, audience: null, phone: null };
+      return emit(toPhase(next, 'ANSWER_LOCKED'), 'lock', { answer: action.answer });
     }
 
     // The host reveals the result; final answer music plays until then.
@@ -438,6 +440,17 @@ export function reduceGame(data: AppData, action: Action): GameState {
     case 'LOAD_GAME':
       return emit({ ...initialGame(), ...action.game, eventSeq: Math.max(action.game.eventSeq, g.eventSeq), events: [] }, 'reset');
   }
+}
+
+/**
+ * Answers stay blocked only while a lifeline is still in progress: the 50:50 sequence,
+ * the phone call before the countdown starts and the audience vote before the results.
+ */
+export function lifelineBlocksAnswer(g: GameState): boolean {
+  if (g.activeLifeline === 'fifty') return true;
+  if (g.activeLifeline === 'phone') return g.phone?.status === 'calling';
+  if (g.activeLifeline === 'audience') return g.audience?.status !== 'results';
+  return false;
 }
 
 /** Phone time left, frozen while the game is paused. */

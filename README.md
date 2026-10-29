@@ -36,7 +36,7 @@ Otwórz adres wypisany przez Vite.
 
 1. **Przejście**: po kliknięciu „Następne pytanie” gra 5 s muzyki, potem pojawia się treść pytania.
 2. **Odpowiedzi**: prowadzący odsłania je po kolei (A, B, C, D). Uczestnik może kliknąć dopiero, gdy widać wszystkie cztery.
-3. **Odpowiedź**: uczestnik klika odpowiedź (albo prowadzący naciska 1–4). Odpowiedź się blokuje, gra „final answer” — aż do ujawnienia.
+3. **Odpowiedź**: uczestnik klika odpowiedź (albo prowadzący naciska 1–4). Odpowiedź się blokuje, gra „final answer” — aż do ujawnienia. Jeśli na ekranie jest jeszcze telefon (w trakcie odliczania lub po nim) albo wyniki publiczności, kliknięcie odpowiedzi samo je zamyka.
 4. **Ujawnienie**: prowadzący klika **Pokaż odpowiedź**. Pole zmienia kolor na zielony albo czerwony, a przy błędzie poprawna odpowiedź świeci na zielono.
 5. **Dalej**: **Następne pytanie**. Po ostatnim pytaniu przycisk zmienia się w **Zakończ teleturniej**.
 6. **Przerwa po 5. pytaniu**: kliknięcie „Następne pytanie” po 5. pytaniu włącza klakson i pauzuje grę. **Wznów grę po przerwie** przechodzi do pytania 6.
