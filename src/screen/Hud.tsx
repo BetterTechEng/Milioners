@@ -1,14 +1,14 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, Users, X } from 'lucide-react';
 import type { GameState, LifelineId, Settings } from '../types';
-import { formatMoney, lastCorrectLevel } from '../game/rules';
+import { fitFont, lastCorrectLevel } from '../game/rules';
 
 export function MoneyLadder({
   prizes,
   settings,
   g,
 }: {
-  prizes: number[];
+  prizes: string[];
   settings: Settings;
   g: GameState;
 }) {
@@ -63,14 +63,14 @@ export function MoneyLadder({
                 ◆
               </span>
               <span
-                className="relative ml-2 font-display font-bold tracking-wide"
+                className="relative ml-2 whitespace-nowrap font-display font-bold tracking-wide"
                 style={{
-                  fontSize: font,
+                  fontSize: fitFont(p, font, 13),
                   color: isCurrent ? '#1b0b00' : thr ? '#ffffff' : passed ? '#f5d77a' : '#f0b33f',
                   textShadow: thr && !isCurrent ? '0 0 14px rgba(255,255,255,0.7)' : undefined,
                 }}
               >
-                {formatMoney(p, settings.currency)}
+                {p}
               </span>
             </div>
           );

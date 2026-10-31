@@ -68,7 +68,9 @@ Uczestnik klika ikonę koła na górze planszy.
 
 ## Pytania
 
-W zakładce **Pytania** dodasz, edytujesz, usuniesz, zduplikujesz i przesuniesz pytania, przetestujesz pojedyncze pytanie na ekranie gry, a także zaimportujesz lub wyeksportujesz JSON. Gra używa pierwszych N pytań z listy (N ustawisz w Ustawieniach).
+W zakładce **Pytania** dodasz, edytujesz, usuniesz, zduplikujesz i przesuniesz pytania, przetestujesz pojedyncze pytanie na ekranie gry, a także zaimportujesz lub wyeksportujesz JSON. Gra używa pierwszych N pytań z listy (N ustawisz w Ustawieniach). Domyślnie są w niej pytania o parę młodą; zapisana wcześniej gra z dawnymi przykładowymi pytaniami dostaje je automatycznie (pytania edytowane przez prowadzącego zostają).
+
+**Nagrody** to nazwy (Ustawienia → Nagrody), np. „Królewska Owacja”, „Shot Władzy”, „MILIONER”. Puste pole pokazuje kwotę, a „-” oznacza poziom bez nagrody.
 
 Format JSON:
 

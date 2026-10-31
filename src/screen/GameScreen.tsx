@@ -4,7 +4,7 @@ import { useAppData, store } from '../game/store';
 import { useDirector, useShortcuts } from '../host/hooks';
 import { HostBar } from '../host/HostBar';
 import { currentQuestion } from '../game/machine';
-import { ladder, levelCount, pickFiftyFifty, randomAudience } from '../game/rules';
+import { ladderLabels, levelCount, pickFiftyFifty, randomAudience } from '../game/rules';
 import { AudioManager } from '../audio/AudioManager';
 import { Emblem, Stage, StudioBackground, type Mood } from './Studio';
 import { QuestionBoard } from './Board';
@@ -107,7 +107,7 @@ export function GameScreen() {
 
   const q = currentQuestion(data);
   const total = g.testMode ? data.questions.length : levelCount(data.questions, s);
-  const prizes = ladder(data.questions, s);
+  const prizes = ladderLabels(data.questions, s);
   const onBoard =
     q &&
     ['QUESTION_INTRO', 'QUESTION_ACTIVE', 'ANSWER_SELECTED', 'ANSWER_LOCKED', 'VIDEO_PLAYING', 'ANSWER_REVEAL', 'ANSWER_CORRECT', 'ANSWER_INCORRECT', 'QUESTION_COMPLETED'].includes(g.phase);

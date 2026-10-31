@@ -1,5 +1,5 @@
 import type { AppData, GameState, HistoryEntry, MediaRef, Question, Settings } from '../types';
-import { createSampleQuestions, DEFAULT_SETTINGS, uid } from '../data/defaults';
+import { CONTENT_VERSION, createSampleQuestions, DEFAULT_SETTINGS, uid } from '../data/defaults';
 import { initialGame } from './machine';
 
 const KEY_DATA = 'milioners.data.v1';
@@ -9,6 +9,7 @@ export function defaultAppData(): AppData {
   return {
     version: 0,
     origin: '',
+    contentVersion: CONTENT_VERSION,
     game: initialGame(DEFAULT_SETTINGS.participants[0]),
     questions: createSampleQuestions(),
     settings: structuredClone(DEFAULT_SETTINGS),
@@ -25,6 +26,7 @@ function mergeSettings(s: Partial<Settings> | undefined): Settings {
     volume: { ...d.volume, ...(s.volume ?? {}) },
     lifelinesEnabled: { ...d.lifelinesEnabled, ...(s.lifelinesEnabled ?? {}) },
     prizes: Array.isArray(s.prizes) && s.prizes.length ? s.prizes : d.prizes,
+    prizeNames: Array.isArray(s.prizeNames) ? s.prizeNames : d.prizeNames,
     thresholds: Array.isArray(s.thresholds) ? s.thresholds : d.thresholds,
     participants: Array.isArray(s.participants) && s.participants.length ? s.participants : d.participants,
   };
@@ -36,11 +38,19 @@ export function loadAppData(): AppData {
     if (!raw) return defaultAppData();
     const parsed = JSON.parse(raw) as Partial<AppData>;
     const base = defaultAppData();
+    let questions = Array.isArray(parsed.questions) ? parsed.questions : base.questions;
+    let game = { ...base.game, ...(parsed.game ?? {}) };
+    // Older built-in sample questions (never edited by the host) are replaced by the current set.
+    if ((parsed.contentVersion ?? 1) < CONTENT_VERSION && questions.every((q) => q.id.startsWith('q-sample-'))) {
+      questions = base.questions;
+      game = { ...base.game, musicOn: game.musicOn, eventSeq: game.eventSeq };
+    }
     return {
       version: parsed.version ?? 0,
       origin: parsed.origin ?? '',
-      game: { ...base.game, ...(parsed.game ?? {}) },
-      questions: Array.isArray(parsed.questions) ? parsed.questions : base.questions,
+      contentVersion: CONTENT_VERSION,
+      game,
+      questions,
       settings: mergeSettings(parsed.settings),
       history: Array.isArray(parsed.history) ? parsed.history : [],
     };
@@ -156,13 +166,14 @@ function isMediaRef(v: unknown): v is MediaRef {
 
 /* ---------- History ---------- */
 
-export function historyEntry(game: GameState, prize: number): HistoryEntry {
+export function historyEntry(game: GameState, prize: number, prizeLabel?: string): HistoryEntry {
   return {
     id: uid('h'),
     date: new Date().toISOString(),
     participant: game.participant || '—',
     outcome: game.phase === 'GAME_WON' ? 'won' : game.endReason === 'stopped' ? 'stopped' : 'lost',
     prize,
+    prizeLabel,
     reachedLevel: game.results.reduce((m, r) => (r.outcome === 'correct' ? Math.max(m, r.index + 1) : m), 0),
   };
 }

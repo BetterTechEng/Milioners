@@ -3,7 +3,7 @@ import { AnimatePresence, motion, animate } from 'motion/react';
 import { Pause, Phone, PhoneOff, Users } from 'lucide-react';
 import type { AppData, GameState, Question } from '../types';
 import { ANSWER_LETTERS } from '../types';
-import { formatMoney, isThreshold, lastCorrectLevel, prizeAt } from '../game/rules';
+import { fitFont, isRealPrize, isThreshold, lastCorrectLevel, prizeLabel, wonPrizeLabel } from '../game/rules';
 import { PHONE_SECONDS, phoneLeftMs } from '../game/machine';
 import { Emblem } from './Studio';
 
@@ -207,7 +207,7 @@ export function ResultBanner({ data, q }: { data: AppData; q: Question | undefin
   const show = (g.phase === 'ANSWER_CORRECT' || g.phase === 'ANSWER_INCORRECT') && !g.activeLifeline;
   const correct = g.phase === 'ANSWER_CORRECT';
   const thr = correct && isThreshold(data.settings, g.index) && !g.testMode;
-  const prize = prizeAt(data.questions, data.settings, g.index);
+  const prize = prizeLabel(data.questions, data.settings, g.index);
   if (!q) return null;
   return (
     <AnimatePresence>
@@ -229,12 +229,17 @@ export function ResultBanner({ data, q }: { data: AppData; q: Question | undefin
                   animate={{ scale: [1, 1.06, 1] }}
                   transition={{ duration: 1.2, repeat: Infinity }}
                 >
-                  Kwota gwarantowana
+                  Próg gwarantowany
                 </motion.div>
               )}
-              <div className="gold-text font-display text-[110px] font-black leading-none drop-shadow-[0_6px_6px_rgba(0,0,0,0.8)]">
-                {formatMoney(prize, data.settings.currency)}
-              </div>
+              {isRealPrize(prize) && (
+                <div
+                  className="gold-text whitespace-nowrap text-center font-display font-black leading-none drop-shadow-[0_6px_6px_rgba(0,0,0,0.8)]"
+                  style={{ fontSize: fitFont(prize, 110, 14) }}
+                >
+                  {prize}
+                </div>
+              )}
               <div className="mt-3 font-display text-[30px] font-bold uppercase tracking-widest text-green-300 drop-shadow-[0_0_14px_rgba(60,255,120,0.8)]">
                 Poprawna odpowiedź!
               </div>
@@ -343,7 +348,7 @@ export function EndOverlay({ data }: { data: AppData }) {
   const g = data.game;
   const won = g.phase === 'GAME_WON';
   const lost = g.phase === 'GAME_LOST';
-  const prize = g.finalPrize ?? 0;
+  const prize = wonPrizeLabel(data.questions, data.settings, g.results);
   const lastWasCorrect = g.results.at(-1)?.outcome === 'correct' && lastCorrectLevel(g.results) >= 0;
   return (
     <AnimatePresence>
@@ -373,17 +378,22 @@ export function EndOverlay({ data }: { data: AppData }) {
               {g.participant}
             </motion.div>
           )}
-          <motion.div className="mt-6 font-display text-[36px] text-blue-100" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.7 }}>
-            {won ? 'wygrywa' : 'zabiera do domu'}
-          </motion.div>
-          <motion.div
-            className="gold-text font-display text-[130px] font-black leading-tight drop-shadow-[0_8px_8px_rgba(0,0,0,0.8)]"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: won ? [1, 1.05, 1] : 1 }}
-            transition={{ delay: 2, duration: won ? 2 : 0.8, repeat: won ? Infinity : 0 }}
-          >
-            {formatMoney(prize, data.settings.currency)}
-          </motion.div>
+          {prize && (
+            <>
+              <motion.div className="mt-6 font-display text-[36px] text-blue-100" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.7 }}>
+                {won ? 'wygrywa' : 'zabiera do domu'}
+              </motion.div>
+              <motion.div
+                className="gold-text whitespace-nowrap text-center font-display font-black leading-tight drop-shadow-[0_8px_8px_rgba(0,0,0,0.8)]"
+                style={{ fontSize: fitFont(prize, 130, 14) }}
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: won ? [1, 1.05, 1] : 1 }}
+                transition={{ delay: 2, duration: won ? 2 : 0.8, repeat: won ? Infinity : 0 }}
+              >
+                {prize}
+              </motion.div>
+            </>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

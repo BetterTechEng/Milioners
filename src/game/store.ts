@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { AppData, Question, Settings } from '../types';
 import { reduceGame, type Action } from './machine';
 import { DATA_STORAGE_KEY, historyEntry, loadAppData, parseStoredAppData, persistAppData } from './storage';
+import { wonPrizeLabel } from './rules';
 
 /**
  * Shared app store. Every window keeps a copy; a change is saved to
@@ -76,7 +77,7 @@ export const store = {
     let history = data.history;
     const finished = (p: string) => p === 'GAME_WON' || p === 'GAME_LOST';
     if (finished(game.phase) && !finished(data.game.phase) && !game.testMode) {
-      history = [historyEntry(game, game.finalPrize ?? 0), ...history].slice(0, 100);
+      history = [historyEntry(game, game.finalPrize ?? 0, wonPrizeLabel(data.questions, data.settings, game.results) ?? '—'), ...history].slice(0, 100);
     }
     commit({ ...data, game, history });
     return true;

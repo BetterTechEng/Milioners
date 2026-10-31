@@ -48,6 +48,8 @@ export interface Settings {
   questionCount: number;
   participants: string[];
   prizes: number[];
+  /** Prize names shown instead of amounts; empty name = show the amount, "-" = no prize. */
+  prizeNames: string[];
   /** 0-based level indexes that are guaranteed. */
   thresholds: number[];
   lifelinesEnabled: Record<LifelineId, boolean>;
@@ -181,11 +183,14 @@ export interface HistoryEntry {
   participant: string;
   outcome: 'won' | 'lost' | 'stopped';
   prize: number;
+  prizeLabel?: string;
   reachedLevel: number;
 }
 
 export interface AppData {
   version: number;
+  /** Version of the built-in question set this data was created with. */
+  contentVersion?: number;
   origin: string;
   game: GameState;
   questions: Question[];

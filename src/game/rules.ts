@@ -106,6 +106,36 @@ export function normalizeTo100(values: number[]): [number, number, number, numbe
   return [floored[0], floored[1], floored[2], floored[3]];
 }
 
+/** Prize name for a level, or the formatted amount when the level has no name. */
+export function prizeLabel(questions: Question[], settings: Settings, level: number): string {
+  const name = settings.prizeNames?.[level]?.trim();
+  return name ? name : formatMoney(prizeAt(questions, settings, level), settings.currency);
+}
+
+/** "-" or an empty label means there is no prize on that level. */
+export function isRealPrize(label: string): boolean {
+  return !!label.trim() && label.trim() !== '-';
+}
+
+export function ladderLabels(questions: Question[], settings: Settings): string[] {
+  return Array.from({ length: levelCount(questions, settings) }, (_, i) => prizeLabel(questions, settings, i));
+}
+
+/** Best prize the player has reached: the highest correctly answered level that has a real prize. */
+export function wonPrizeLabel(questions: Question[], settings: Settings, results: RoundResult[]): string | null {
+  const levels = results.filter((r) => r.outcome === 'correct').map((r) => r.index).sort((a, b) => b - a);
+  for (const lvl of levels) {
+    const label = prizeLabel(questions, settings, lvl);
+    if (isRealPrize(label)) return label;
+  }
+  return null;
+}
+
+/** Font size that keeps a label of any length inside a given width. */
+export function fitFont(text: string, base: number, maxChars: number): number {
+  return text.length > maxChars ? Math.max(base * 0.45, (base * maxChars) / text.length) : base;
+}
+
 export function formatMoney(value: number, currency: string): string {
   const digits = Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${digits} ${currency}`;

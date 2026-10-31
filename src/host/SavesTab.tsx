@@ -75,7 +75,7 @@ export function SavesTab({ data }: { data: AppData }) {
                     <td className="py-1.5 text-blue-200/80">{new Date(h.date).toLocaleString('pl-PL')}</td>
                     <td>{h.participant}</td>
                     <td>{h.outcome === 'won' ? '🏆 wygrana' : h.outcome === 'stopped' ? 'rezygnacja' : 'przegrana'} · {h.reachedLevel} pyt.</td>
-                    <td className="text-right font-bold text-gold-300">{formatMoney(h.prize, data.settings.currency)}</td>
+                    <td className="text-right font-bold text-gold-300">{h.prizeLabel ?? formatMoney(h.prize, data.settings.currency)}</td>
                   </tr>
                 ))}
               </tbody>

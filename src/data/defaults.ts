@@ -5,11 +5,34 @@ export const DEFAULT_PRIZES = [
   2000000,
 ];
 
+/** Prize names shown on the ladder instead of amounts ("-" = no prize on that level). */
+export const DEFAULT_PRIZE_NAMES = [
+  'Królewska Owacja',
+  'Wasza Wysokość',
+  'Shot Władzy',
+  'Chipsowy Monopol',
+  'Królewski Tytuł',
+  'Buziak Eweliny',
+  'Słowa Miłości',
+  'Owacja Publiczności',
+  'Portret Legendy',
+  '-',
+  '-',
+  '-',
+  '-',
+  '-',
+  'MILIONER',
+];
+
+/** Bump when the built-in questions change, so stored copies of the old built-in set are replaced. */
+export const CONTENT_VERSION = 2;
+
 export const DEFAULT_SETTINGS: Settings = {
   title: 'Milioners',
   questionCount: 15,
   participants: ['Gracz 1'],
   prizes: DEFAULT_PRIZES,
+  prizeNames: DEFAULT_PRIZE_NAMES,
   thresholds: [4, 9],
   lifelinesEnabled: { fifty: true, phone: true, audience: true },
   theme: 'classic',
@@ -29,110 +52,104 @@ type Q = Omit<Question, 'id'>;
 
 const SAMPLE: Q[] = [
   {
-    text: 'Jak nazywa się stolica Polski?',
-    answers: ['Kraków', 'Warszawa', 'Gdańsk', 'Poznań'],
+    text: 'Jakie zdanie najczęściej pada w Waszym domu?',
+    answers: ['„Gdzie są moje rzeczy?”', '„Co dzisiaj jemy?”', '„Mówiłam Ci przecież!”', '„Jeszcze pięć minut!”'],
     correct: 1,
     difficulty: 1,
-    hostComment: 'Rozgrzewka. Warszawa jest stolicą od przełomu XVI i XVII wieku.',
   },
   {
-    text: 'Ile nóg ma pająk?',
-    answers: ['Sześć', 'Osiem', 'Dziesięć', 'Dwanaście'],
-    correct: 1,
-    difficulty: 1,
-    hostComment: 'Pająki to pajęczaki, nie owady. Owady mają sześć nóg.',
-  },
-  {
-    text: 'Który kolor powstaje ze zmieszania niebieskiego i żółtego?',
-    answers: ['Fioletowy', 'Pomarańczowy', 'Zielony', 'Brązowy'],
-    correct: 2,
-    difficulty: 1,
-  },
-  {
-    text: 'Jak nazywa się najdłuższa rzeka w Polsce?',
-    answers: ['Odra', 'Warta', 'Bug', 'Wisła'],
+    text: 'Co najchętniej zmieniłabyś w codziennym zachowaniu Łukasza?',
+    answers: ['Odkładanie wszystkiego na później', 'Zostawianie rzeczy gdzie popadnie', 'Zbyt długie siedzenie przed ekranem', 'Niesłuchanie, kiedy coś mówi'],
     correct: 3,
     difficulty: 1,
-    hostComment: 'Wisła ma ok. 1047 km długości.',
   },
   {
-    text: 'Ile minut ma jedna doba?',
-    answers: ['1240', '1440', '1640', '2400'],
+    text: 'Co wybrałby Łukasz na pierwszym miejscu?',
+    answers: ['Pizza', 'Hamburger', 'Kebab', 'Chipsy'],
+    correct: 0,
+    difficulty: 1,
+  },
+  {
+    text: 'Gdybyś mogła na zawsze zakazać Łukaszowi jednej rzeczy, którą regularnie robi w domu, co by to było?',
+    answers: ['Losowe wrzucanie rzeczy do szuflad', 'Zostawianie rzeczy na blacie przy rozpakowywaniu zakupów', 'Zbyt długie oglądanie Kapitana Bomby', 'Nie wiem'],
     correct: 1,
     difficulty: 1,
-    hostComment: 'Pierwszy próg gwarantowany. 24 × 60 = 1440.',
   },
   {
-    text: 'Który pierwiastek chemiczny ma symbol „Fe”?',
-    answers: ['Fluor', 'Żelazo', 'Fosfor', 'Ferm'],
+    text: 'Jaki zakup, pomysł albo wydatek Łukasza uważasz za największą finansową głupotę w historii Waszego związku?',
+    answers: ['Żaden', 'Kupienie stołeczka na nogi do lepszego wypróżniania się', 'Kupienie taniego karnisza, który po miesiącu się zniszczył', 'Brak głupoty'],
+    correct: 3,
+    difficulty: 1,
+  },
+  {
+    text: 'Jaka jest ulubiona kreskówka Łukasza?',
+    answers: ['Dragon Ball', 'Kapitan Bomba', 'Naruto', 'Blok Ekipa'],
+    correct: 0,
+    difficulty: 2,
+  },
+  {
+    text: 'Jakie jest Wasze ulubione wspólne wspomnienie?',
+    answers: ['Moment zaręczyn', 'Pierwszy wypad w góry (z Patrykiem i Monią)', 'Pierwsze spotkanie na siłowni', 'Zakup kociaka Juliusza'],
     correct: 1,
     difficulty: 2,
-    hostComment: 'Od łacińskiego „ferrum”.',
   },
   {
-    text: 'Kto namalował obraz „Dama z gronostajem”?',
-    answers: ['Rafael', 'Michał Anioł', 'Leonardo da Vinci', 'Tycjan'],
+    text: 'Gdybyście jutro wygrali milion złotych, na co chciałabyś wydać pierwsze 100 tysięcy?',
+    answers: ['Wkład na nowe, większe mieszkanie', 'Nowy samochód', 'Podróż na inny kontynent', 'Inwestycja w złoto'],
+    correct: 0,
+    difficulty: 2,
+  },
+  {
+    text: 'Gdybyś miała wybrać Waszą idealną wspólną sobotę, jak by ona wyglądała?',
+    answers: [
+      'Wyspać się, zjeść coś dobrego, wyjść gdzieś na spacer',
+      'Wyspać się, zjeść coś dobrego, obejrzeć fajny film',
+      'Wyjść na trening, zjeść coś dobrego, obejrzeć fajny film',
+      'Wyspać się, wyjechać do Czarniża, obejrzeć fajny film',
+    ],
+    correct: 0,
+    difficulty: 2,
+  },
+  {
+    text: 'Co najczęściej Łukasz udaje, że robi, żeby uniknąć obowiązków domowych?',
+    answers: ['Udaje, że się uczy', 'Udaje, że ma sraczkę i siedzi długo w kiblu', 'Udaje, że płaci rachunki', 'Udaje, że jeszcze pracuje'],
     correct: 2,
     difficulty: 2,
-    hostComment: 'Obraz można oglądać w Muzeum Książąt Czartoryskich w Krakowie.',
   },
   {
-    text: 'W którym roku Polska przystąpiła do Unii Europejskiej?',
-    answers: ['1999', '2002', '2004', '2007'],
-    correct: 2,
-    difficulty: 2,
-    hostComment: '1 maja 2004 roku.',
+    text: 'Które zdanie najlepiej opisuje podział władzy w Waszym związku?',
+    answers: ['Ona rządzi, on wykonuje', 'On rządzi, ona pozwala mu tak myśleć', 'Pełna demokracja', 'Rządzi ten, kto akurat jest bardziej zdenerwowany'],
+    correct: 3,
+    difficulty: 3,
   },
   {
-    text: 'Która planeta Układu Słonecznego jest największa?',
-    answers: ['Saturn', 'Jowisz', 'Neptun', 'Uran'],
-    correct: 1,
-    difficulty: 2,
-  },
-  {
-    text: 'Jak nazywa się najwyższy szczyt Tatr?',
-    answers: ['Rysy', 'Gerlach', 'Łomnica', 'Krywań'],
-    correct: 1,
-    difficulty: 2,
-    hostComment: 'Drugi próg gwarantowany. Gerlach (2655 m) leży na Słowacji; Rysy to najwyższy szczyt Polski.',
-  },
-  {
-    text: 'Ile kości ma dorosły człowiek?',
-    answers: ['186', '206', '226', '246'],
+    text: 'Gdyby Wasz związek miał być jednym gatunkiem filmowym, który najlepiej by do niego pasował?',
+    answers: ['Film akcji', 'Komedia romantyczna', 'Thriller psychologiczny', 'Horror'],
     correct: 1,
     difficulty: 3,
   },
   {
-    text: 'Które z tych miast leży najdalej na północ?',
-    answers: ['Oslo', 'Helsinki', 'Sztokholm', 'Tallinn'],
-    correct: 1,
-    difficulty: 3,
-    hostComment: 'Helsinki ok. 60,17°N, Oslo ok. 59,91°N, Tallinn ok. 59,44°N, Sztokholm ok. 59,33°N.',
-  },
-  {
-    text: 'Kto jest autorem „Lalki”?',
-    answers: ['Henryk Sienkiewicz', 'Bolesław Prus', 'Stefan Żeromski', 'Eliza Orzeszkowa'],
-    correct: 1,
+    text: 'Gdybyś miała przycisk „wycisz męża”, w jakich sytuacjach używałabyś go najczęściej?',
+    answers: ['W trakcie treningu na siłowni', 'Piątek wieczór po całym tygodniu pracy', 'W trakcie mojego okresu', 'W sobotę rano, zanim zjem śniadanie'],
+    correct: 0,
     difficulty: 3,
   },
   {
-    text: 'Która jednostka nie należy do układu SI jako jednostka podstawowa?',
-    answers: ['Kandela', 'Mol', 'Wolt', 'Kelwin'],
-    correct: 2,
-    difficulty: 3,
-    hostComment: 'Wolt jest jednostką pochodną.',
-  },
-  {
-    text: 'W którym roku odbył się pierwszy lot braci Wright samolotem z napędem?',
-    answers: ['1899', '1903', '1908', '1911'],
+    text: 'Gdyby Łukasz miał otrzymać nagrodę za swoje zachowanie w związku, w jakiej kategorii by wygrał?',
+    answers: ['Mistrz wymówek', 'Złoty medal w zapominaniu', 'Ekspert od nicnierobienia', 'Mistrz rozładowywania konfliktów'],
     correct: 1,
     difficulty: 3,
-    hostComment: 'Pytanie finałowe. 17 grudnia 1903 roku, Kitty Hawk.',
+  },
+  {
+    text: 'Jaką jedną rzecz najchętniej przekazałabyś przyszłemu mężowi w instrukcji obsługi małżeństwa?',
+    answers: ['„Słuchaj, zanim odpowiesz”', '„Nie pytaj, gdzie co leży”', '„Nie wszystko jest żartem”', '„Czasem po prostu przyznaj mi rację”'],
+    correct: 3,
+    difficulty: 3,
   },
 ];
 
 export function createSampleQuestions(): Question[] {
-  return SAMPLE.map((q, i) => ({ ...q, id: `q-sample-${i + 1}` }));
+  return SAMPLE.map((q, i) => ({ ...q, id: `q-show-${i + 1}` }));
 }
 
 export function uid(prefix = 'id'): string {

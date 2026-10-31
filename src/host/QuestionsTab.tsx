@@ -5,7 +5,7 @@ import { ANSWER_LETTERS } from '../types';
 import { store } from '../game/store';
 import { uid } from '../data/defaults';
 import { deleteMediaFile, exportQuestionsJson, parseQuestionsJson, putMediaFile } from '../game/storage';
-import { formatMoney, prizeAt } from '../game/rules';
+import { prizeLabel } from '../game/rules';
 import { Btn, Card, Field, inputCls } from './ui';
 
 function emptyQuestion(): Question {
@@ -99,7 +99,7 @@ export function QuestionsTab({ data, onTest }: { data: AppData; onTest: () => vo
                 <div className="flex flex-wrap gap-3 text-xs text-blue-200/70">
                   <span>✓ {ANSWER_LETTERS[q.correct]}: {q.answers[q.correct]}</span>
                   <span>{['', 'łatwe', 'średnie', 'trudne'][q.difficulty]}</span>
-                  <span>{formatMoney(prizeAt(qs, data.settings, i), data.settings.currency)}{q.prize ? ' (własna)' : ''}</span>
+                  <span>Nagroda: {prizeLabel(qs, data.settings, i)}{q.prize ? ' (własna)' : ''}</span>
                   {q.image && <span className="flex items-center gap-1"><ImageIcon size={12} /> obraz</span>}
                   {q.video && <span className="flex items-center gap-1"><Film size={12} /> wideo</span>}
                   {q.answerVideo && <span className="flex items-center gap-1 text-violet-300"><Film size={12} /> film z odpowiedzią</span>}
