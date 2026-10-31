@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { AnswerIndex, AppData } from '../types';
 import { store } from '../game/store';
 import { levelCount } from '../game/rules';
-import { AUDIENCE_AFTER_MS, FIFTY_AFTER_MS, TRANSITION_MS, phoneLeftMs, type Action } from '../game/machine';
+import { FIFTY_AFTER_MS, TRANSITION_MS, phoneLeftMs, type Action } from '../game/machine';
 
 /**
  * Timed transitions, each counted from the event that started it:
@@ -54,11 +54,9 @@ export function useDirector(data: AppData) {
     let id = 0;
     if (g.activeLifeline === 'fifty' && g.fiftyPending) {
       id = window.setTimeout(() => store.dispatch({ type: 'FIFTY_APPLY' }), Math.max(0, FIFTY_AFTER_MS - elapsed));
-    } else if (g.activeLifeline === 'audience' && g.audience?.status === 'voting') {
-      id = window.setTimeout(() => store.dispatch({ type: 'AUDIENCE_SHOW' }), Math.max(0, AUDIENCE_AFTER_MS - elapsed));
     }
     return () => window.clearTimeout(id);
-  }, [g.activeLifeline, g.lifelineAt, g.paused, g.fiftyPending, g.audience?.status]);
+  }, [g.activeLifeline, g.lifelineAt, g.paused, g.fiftyPending]);
 
   // Phone time-out ends the call automatically.
   const phone = g.phone;
@@ -97,7 +95,10 @@ export function useShortcuts(data: AppData, extra: { playVideo: () => void; full
         fn();
       };
       if (['1', '2', '3', '4'].includes(k)) {
-        store.dispatch({ type: 'SELECT', answer: (Number(k) - 1) as AnswerIndex });
+        // During the audience vote the number keys add votes instead of answering.
+        const answer = (Number(k) - 1) as AnswerIndex;
+        if (g.activeLifeline === 'audience' && g.audience?.status === 'voting') store.dispatch({ type: 'AUDIENCE_VOTE', answer });
+        else store.dispatch({ type: 'SELECT', answer });
       } else if (k === 'enter') {
         e.preventDefault();
         guarded(() => store.dispatch({ type: 'SHOW_ANSWER' }));

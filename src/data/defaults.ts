@@ -12,8 +12,8 @@ export const DEFAULT_PRIZE_NAMES = [
   'Shot Władzy',
   'Chipsowy Monopol',
   'Królewski Tytuł',
-  'Buziak Eweliny',
-  'Słowa Miłości',
+  'Juliusz Cezar',
+  'Życzenia na Kawalerski',
   'Owacja Publiczności',
   'Portret Legendy',
   '-',
@@ -25,12 +25,15 @@ export const DEFAULT_PRIZE_NAMES = [
 ];
 
 /** Bump when the built-in questions change, so stored copies of the old built-in set are replaced. */
-export const CONTENT_VERSION = 2;
+export const CONTENT_VERSION = 3;
+
+/** Built-in values from earlier versions, replaced automatically when a stored game still has them. */
+export const OLD_DEFAULT_PARTICIPANT = 'Gracz 1';
 
 export const DEFAULT_SETTINGS: Settings = {
   title: 'Milioners',
   questionCount: 15,
-  participants: ['Gracz 1'],
+  participants: ['Yuby Łukasz'],
   prizes: DEFAULT_PRIZES,
   prizeNames: DEFAULT_PRIZE_NAMES,
   thresholds: [4, 9],
@@ -77,7 +80,7 @@ const SAMPLE: Q[] = [
   },
   {
     text: 'Jaki zakup, pomysł albo wydatek Łukasza uważasz za największą finansową głupotę w historii Waszego związku?',
-    answers: ['Żaden', 'Kupienie stołeczka na nogi do lepszego wypróżniania się', 'Kupienie taniego karnisza, który po miesiącu się zniszczył', 'Brak głupoty'],
+    answers: ['Kupienie głupiej gry - strzelanki', 'Kupienie stołeczka na nogi do lepszego wypróżniania się', 'Kupienie taniego karnisza, który po miesiącu się zniszczył', 'Brak głupoty'],
     correct: 3,
     difficulty: 1,
   },
@@ -100,7 +103,7 @@ const SAMPLE: Q[] = [
     difficulty: 2,
   },
   {
-    text: 'Gdybyś miała wybrać Waszą idealną wspólną sobotę, jak by ona wyglądała?',
+    text: 'Gdybyś miała wybrać Waszą idealną wspólną sobotę, jak by ona wyglądała? Wymień tylko 3 punkty',
     answers: [
       'Wyspać się, zjeść coś dobrego, wyjść gdzieś na spacer',
       'Wyspać się, zjeść coś dobrego, obejrzeć fajny film',
@@ -131,7 +134,7 @@ const SAMPLE: Q[] = [
   {
     text: 'Gdybyś miała przycisk „wycisz męża”, w jakich sytuacjach używałabyś go najczęściej?',
     answers: ['W trakcie treningu na siłowni', 'Piątek wieczór po całym tygodniu pracy', 'W trakcie mojego okresu', 'W sobotę rano, zanim zjem śniadanie'],
-    correct: 0,
+    correct: 3,
     difficulty: 3,
   },
   {

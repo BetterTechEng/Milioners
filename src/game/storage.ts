@@ -1,5 +1,5 @@
 import type { AppData, GameState, HistoryEntry, MediaRef, Question, Settings } from '../types';
-import { CONTENT_VERSION, createSampleQuestions, DEFAULT_SETTINGS, uid } from '../data/defaults';
+import { CONTENT_VERSION, createSampleQuestions, DEFAULT_SETTINGS, OLD_DEFAULT_PARTICIPANT, uid } from '../data/defaults';
 import { initialGame } from './machine';
 
 const KEY_DATA = 'milioners.data.v1';
@@ -40,10 +40,21 @@ export function loadAppData(): AppData {
     const base = defaultAppData();
     let questions = Array.isArray(parsed.questions) ? parsed.questions : base.questions;
     let game = { ...base.game, ...(parsed.game ?? {}) };
-    // Older built-in sample questions (never edited by the host) are replaced by the current set.
-    if ((parsed.contentVersion ?? 1) < CONTENT_VERSION && questions.every((q) => q.id.startsWith('q-sample-'))) {
-      questions = base.questions;
-      game = { ...base.game, musicOn: game.musicOn, eventSeq: game.eventSeq };
+    const settings = mergeSettings(parsed.settings);
+    // Data saved by an older version gets the current built-in content.
+    if ((parsed.contentVersion ?? 1) < CONTENT_VERSION) {
+      if (questions.every((q) => q.id.startsWith('q-sample-'))) {
+        questions = base.questions;
+        game = { ...base.game, musicOn: game.musicOn, eventSeq: game.eventSeq };
+      } else {
+        // Built-in show questions are updated in place; questions the host added stay as they are.
+        questions = questions.map((q) => base.questions.find((d) => d.id === q.id) ?? q);
+      }
+      const oldNames: Record<string, string> = { 'Buziak Eweliny': 'Juliusz Cezar', 'Słowa Miłości': 'Życzenia na Kawalerski' };
+      settings.prizeNames = settings.prizeNames.map((n) => oldNames[n] ?? n);
+      const newName = DEFAULT_SETTINGS.participants[0];
+      settings.participants = settings.participants.map((p) => (p === OLD_DEFAULT_PARTICIPANT ? newName : p));
+      if (game.participant === OLD_DEFAULT_PARTICIPANT) game = { ...game, participant: newName };
     }
     return {
       version: parsed.version ?? 0,
@@ -51,7 +62,7 @@ export function loadAppData(): AppData {
       contentVersion: CONTENT_VERSION,
       game,
       questions,
-      settings: mergeSettings(parsed.settings),
+      settings,
       history: Array.isArray(parsed.history) ? parsed.history : [],
     };
   } catch {

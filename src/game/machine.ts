@@ -1,13 +1,14 @@
 import type {
   AnswerIndex,
   AppData,
+  AudienceState,
   GameEventType,
   GameState,
   LifelineId,
   Phase,
   RoundResult,
 } from '../types';
-import { currentWinnings, isThreshold, levelCount, playQuestions, phoneRemainingMs } from './rules';
+import { currentWinnings, isThreshold, levelCount, normalizeTo100, playQuestions, phoneRemainingMs } from './rules';
 
 /** Fixed show timings (ms), counted from the event that starts them. */
 export const TRANSITION_MS = 5000;
@@ -20,7 +21,6 @@ export const FIFTY_AFTER_MS = 8000;
 export const PHONE_MUSIC_FROM_S = 12;
 export const PHONE_SECONDS = 30;
 export const PHONE_COUNTDOWN_MS = 30140;
-export const AUDIENCE_AFTER_MS = 32000;
 
 export type Action =
   | { type: 'START_GAME'; participant?: string }
@@ -38,7 +38,9 @@ export type Action =
   | { type: 'CLOSE_VIDEO' }
   | { type: 'FIFTY_START'; removed: AnswerIndex[] }
   | { type: 'FIFTY_APPLY' }
-  | { type: 'AUDIENCE_START'; results: [number, number, number, number] }
+  | { type: 'AUDIENCE_START' }
+  | { type: 'AUDIENCE_VOTE'; answer: AnswerIndex }
+  | { type: 'AUDIENCE_UNDO' }
   | { type: 'AUDIENCE_SHOW' }
   | { type: 'PHONE_START' }
   | { type: 'PHONE_CONNECT' }
@@ -301,14 +303,14 @@ export function reduceGame(data: AppData, action: Action): GameState {
       return emit({ ...g, removed: g.fiftyPending, fiftyPending: null, activeLifeline: null }, 'fiftyApplied', { removed: g.fiftyPending });
     }
 
-    // Audience: the melody plays and the results appear 32 s later.
+    // Audience: the host counts the votes with + buttons while the music loops.
     case 'AUDIENCE_START': {
       if (!lifelineAllowed(data, 'audience')) return g;
       return emit(
         {
           ...g,
           activeLifeline: 'audience',
-          audience: { status: 'voting', results: action.results },
+          audience: { status: 'voting', results: [0, 0, 0, 0], votes: [0, 0, 0, 0], log: [] },
           lifelineAt: Date.now(),
           lifelinesUsed: { ...g.lifelinesUsed, audience: true },
         },
@@ -316,9 +318,30 @@ export function reduceGame(data: AppData, action: Action): GameState {
       );
     }
 
+    case 'AUDIENCE_VOTE': {
+      const a = g.audience;
+      if (g.activeLifeline !== 'audience' || !a || a.status !== 'voting' || g.removed.includes(action.answer)) return g;
+      const votes = [...a.votes] as AudienceState['votes'];
+      votes[action.answer] += 1;
+      return { ...g, audience: { ...a, votes, log: [...a.log, action.answer] } };
+    }
+
+    case 'AUDIENCE_UNDO': {
+      const a = g.audience;
+      if (g.activeLifeline !== 'audience' || !a || a.status !== 'voting' || a.log.length === 0) return g;
+      const last = a.log[a.log.length - 1];
+      const votes = [...a.votes] as AudienceState['votes'];
+      votes[last] = Math.max(0, votes[last] - 1);
+      return { ...g, audience: { ...a, votes, log: a.log.slice(0, -1) } };
+    }
+
+    // "Zakończ głosowanie": the votes become percentages and the final part of the music plays.
     case 'AUDIENCE_SHOW': {
-      if (g.activeLifeline !== 'audience' || !g.audience || g.audience.status !== 'voting') return g;
-      return emit({ ...g, audience: { ...g.audience, status: 'results' } }, 'audienceResults');
+      const a = g.audience;
+      if (g.activeLifeline !== 'audience' || !a || a.status !== 'voting') return g;
+      const total = a.votes.reduce((s, v) => s + v, 0);
+      const results = total > 0 ? normalizeTo100(a.votes) : ([0, 0, 0, 0] as AudienceState['results']);
+      return emit({ ...g, audience: { ...a, status: 'results', results } }, 'audienceResults', { total });
     }
 
     // Phone: the intro music loops until the host clicks "Włącz odliczanie".

@@ -38,6 +38,15 @@ const FILES: Record<TrackId, string> = {
 };
 
 /**
+ * ask-the-audience.mp3 (120 BPM): first phrase 0.17–16.17 s, second phrase 16.17–32.17 s,
+ * final hit at 32.17 s. During the vote the second phrase loops (sample-accurate, Web Audio);
+ * "Zakończ głosowanie" jumps straight to the final hit.
+ */
+const AUDIENCE_LOOP_START = 16.15;
+const AUDIENCE_LOOP_END = 32.15;
+const AUDIENCE_END_FROM = 32.15;
+
+/**
  * Loops: the thinking beds, and final answer, which keeps playing until the host
  * reveals the result. Every other track plays once.
  */
@@ -62,6 +71,13 @@ class AudioManagerImpl {
   private volume = 0.6;
   private muted = false;
   private paused = false;
+  /** Web Audio path, used for the audience vote loop. */
+  private ctx: AudioContext | null = null;
+  private gain: GainNode | null = null;
+  private audienceBuf: AudioBuffer | null = null;
+  private audienceLoad: Promise<AudioBuffer | null> | null = null;
+  private web: { id: TrackId; src: AudioBufferSourceNode } | null = null;
+  private webToken = 0;
   /** Track that the browser blocked; retried on the first user interaction. */
   private blocked: TrackId | null = null;
   private onIdle: (() => void) | null = null;
@@ -116,17 +132,87 @@ class AudioManagerImpl {
   }
 
   get currentId(): TrackId | null {
-    return this.current?.id ?? null;
+    return this.web?.id ?? this.current?.id ?? null;
+  }
+
+  private audioCtx(): AudioContext {
+    if (!this.ctx) {
+      this.ctx = new AudioContext();
+      this.gain = this.ctx.createGain();
+      this.gain.connect(this.ctx.destination);
+      this.applyGain();
+    }
+    return this.ctx;
+  }
+
+  private applyGain() {
+    if (this.gain && this.ctx) this.gain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+  }
+
+  /** Fetch and decode the audience music ahead of time so the loop starts without delay. */
+  preloadAudience(): Promise<AudioBuffer | null> {
+    if (!this.audienceLoad) {
+      this.audienceLoad = fetch(`${import.meta.env.BASE_URL}audio/${FILES.audience}`)
+        .then((r) => r.arrayBuffer())
+        .then((b) => this.audioCtx().decodeAudioData(b))
+        .then((buf) => (this.audienceBuf = buf))
+        .catch(() => null);
+    }
+    return this.audienceLoad;
+  }
+
+  private stopWeb() {
+    this.webToken++;
+    if (this.web) {
+      try {
+        this.web.src.stop();
+      } catch {
+        /* already stopped */
+      }
+      this.web.src.disconnect();
+    }
+    this.web = null;
+  }
+
+  /** Start the audience music: from the top with the loop, or only its final hit. */
+  private async playAudience(part: 'loop' | 'end') {
+    this.stop();
+    const token = this.webToken;
+    const ctx = this.audioCtx();
+    const buf = this.audienceBuf ?? (await this.preloadAudience());
+    if (!buf || token !== this.webToken) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.gain!);
+    if (part === 'loop') {
+      src.loop = true;
+      src.loopStart = AUDIENCE_LOOP_START;
+      src.loopEnd = AUDIENCE_LOOP_END;
+      src.start(0, 0);
+    } else {
+      src.start(0, AUDIENCE_END_FROM);
+    }
+    src.onended = () => {
+      if (this.web?.src === src) {
+        this.web = null;
+        this.onIdle?.();
+      }
+    };
+    this.web = { id: 'audience', src };
+    if (this.paused) await ctx.suspend();
+    else if (ctx.state !== 'running') await ctx.resume().catch(() => undefined);
   }
 
   setVolume(master: number, music: number) {
     this.volume = Math.max(0, Math.min(1, master * music));
     this.els.forEach((el) => (el.volume = this.volume));
+    this.applyGain();
   }
 
   setMuted(muted: boolean) {
     this.muted = muted;
     this.els.forEach((el) => (el.muted = muted));
+    this.applyGain();
   }
 
   play(id: TrackId, fromSeconds = 0) {
@@ -146,6 +232,7 @@ class AudioManagerImpl {
   }
 
   stop() {
+    this.stopWeb();
     if (this.current) {
       this.current.el.pause();
       this.current.el.currentTime = 0;
@@ -156,6 +243,10 @@ class AudioManagerImpl {
 
   setPaused(paused: boolean) {
     this.paused = paused;
+    if (this.web && this.ctx) {
+      if (paused) void this.ctx.suspend();
+      else void this.ctx.resume();
+    }
     const el = this.current?.el;
     if (!el) return;
     if (paused) el.pause();
@@ -210,8 +301,12 @@ class AudioManagerImpl {
       case 'fifty':
         this.play('fifty');
         break;
+      // Audience vote: music loops while the host counts votes; the final hit confirms the result.
       case 'audienceStart':
-        this.play('audience');
+        void this.playAudience('loop');
+        break;
+      case 'audienceResults':
+        void this.playAudience('end');
         break;
       // Phone: the first 11 s loop while the call is set up…
       case 'phoneStart':

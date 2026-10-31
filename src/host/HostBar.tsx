@@ -16,8 +16,11 @@ import {
   Sparkles,
   X,
   VolumeX,
+  Plus,
+  Undo2,
+  Check,
 } from 'lucide-react';
-import type { AppData } from '../types';
+import type { AnswerIndex, AppData } from '../types';
 import { store } from '../game/store';
 import { canDo, currentQuestion, type Action } from '../game/machine';
 import { levelCount } from '../game/rules';
@@ -119,7 +122,26 @@ export function HostBar({ data, onFullscreen, menuOpen, setMenuOpen }: { data: A
               <Small icon={<X size={12} />} onClick={() => act({ type: 'LIFELINE_CLOSE' })}>Zamknij telefon</Small>
             </>
           )}
-          {g.activeLifeline === 'audience' && <Small icon={<X size={12} />} onClick={() => act({ type: 'LIFELINE_CLOSE' })}>Zamknij publiczność</Small>}
+          {g.activeLifeline === 'audience' && g.audience?.status === 'voting' && (
+            <>
+              {(['A', 'B', 'C', 'D'] as const).map((l, i) => (
+                <Small
+                  key={l}
+                  icon={<Plus size={12} />}
+                  title={'Głos na ' + l + ' (klawisz ' + (i + 1) + ')'}
+                  disabled={g.removed.includes(i as AnswerIndex)}
+                  onClick={() => act({ type: 'AUDIENCE_VOTE', answer: i as AnswerIndex })}
+                >
+                  {l} <span className="rounded bg-black/30 px-1 font-mono">{g.audience!.votes[i]}</span>
+                </Small>
+              ))}
+              <Small icon={<Undo2 size={12} />} title="Cofnij ostatni głos" disabled={!can({ type: 'AUDIENCE_UNDO' })} onClick={() => act({ type: 'AUDIENCE_UNDO' })} />
+              <Small tone="gold" icon={<Check size={12} />} onClick={() => act({ type: 'AUDIENCE_SHOW' })}>Zakończ głosowanie</Small>
+            </>
+          )}
+          {g.activeLifeline === 'audience' && g.audience?.status === 'results' && (
+            <Small icon={<X size={12} />} onClick={() => act({ type: 'LIFELINE_CLOSE' })}>Zamknij publiczność</Small>
+          )}
 
           {/* Video */}
           {q?.answerVideo && can({ type: 'PLAY_VIDEO', which: 'answer' }) && (

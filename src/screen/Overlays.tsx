@@ -37,7 +37,16 @@ export function AudienceOverlay({ g }: { g: GameState }) {
           <div className="relative flex items-center justify-center gap-3 pt-5 font-display text-[28px] font-bold uppercase tracking-wider text-gold-300">
             <Users size={32} /> Pytanie do publiczności
           </div>
-          <div className="relative mx-10 mt-3 flex h-[270px] items-end justify-around border-b-2 border-blue-300/40">
+          {voting && (
+            <motion.div
+              className="relative text-center font-display text-[20px] font-semibold text-blue-100"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.4, repeat: Infinity }}
+            >
+              Publiczność głosuje… · głosy: {a.votes.reduce((s, v) => s + v, 0)}
+            </motion.div>
+          )}
+          <div className={`relative mx-10 mt-3 flex items-end ${voting ? 'h-[240px]' : 'h-[270px]'} justify-around border-b-2 border-blue-300/40`}>
             {[0, 1, 2, 3].map((i) => {
               const removed = g.removed.includes(i as 0);
               const pct = a.results[i];
@@ -73,15 +82,6 @@ export function AudienceOverlay({ g }: { g: GameState }) {
               </div>
             ))}
           </div>
-          {voting && (
-            <motion.div
-              className="absolute inset-x-0 bottom-[-56px] text-center font-display text-[24px] font-semibold text-blue-100"
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ duration: 1.4, repeat: Infinity }}
-            >
-              Publiczność głosuje…
-            </motion.div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

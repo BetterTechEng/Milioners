@@ -70,7 +70,12 @@ export interface Settings {
 
 export interface AudienceState {
   status: 'voting' | 'results';
+  /** Percentages shown after the vote (sum 100, or all 0 when nobody voted). */
   results: [number, number, number, number];
+  /** Votes counted by the host with the + buttons. */
+  votes: [number, number, number, number];
+  /** Order of the votes, so the last one can be undone. */
+  log: AnswerIndex[];
 }
 
 export interface PhoneState {

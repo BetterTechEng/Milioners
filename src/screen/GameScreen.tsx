@@ -4,7 +4,7 @@ import { useAppData, store } from '../game/store';
 import { useDirector, useShortcuts } from '../host/hooks';
 import { HostBar } from '../host/HostBar';
 import { currentQuestion } from '../game/machine';
-import { ladderLabels, levelCount, pickFiftyFifty, randomAudience } from '../game/rules';
+import { ladderLabels, levelCount, pickFiftyFifty } from '../game/rules';
 import { AudioManager } from '../audio/AudioManager';
 import { Emblem, Stage, StudioBackground, type Mood } from './Studio';
 import { QuestionBoard } from './Board';
@@ -74,6 +74,7 @@ export function GameScreen() {
     AudioManager.setVolume(d.settings.volume.master, d.settings.volume.music);
     AudioManager.setMuted(!d.game.musicOn);
     AudioManager.setIdleHandler(() => AudioManager.syncLoop(dataRef.current));
+    void AudioManager.preloadAudience();
     AudioManager.setPhoneSyncHandler((musicMs, at) => store.dispatch({ type: 'PHONE_SYNC', musicMs, at }));
     if (d.game.paused) AudioManager.setPaused(true);
     if (AudioManager.desiredLoop(d)) AudioManager.syncLoop(d);
@@ -102,7 +103,7 @@ export function GameScreen() {
     if (!cq) return;
     if (id === 'fifty') store.dispatch({ type: 'FIFTY_START', removed: pickFiftyFifty(cq.correct) });
     else if (id === 'phone') store.dispatch({ type: 'PHONE_START' });
-    else store.dispatch({ type: 'AUDIENCE_START', results: randomAudience(dataRef.current.game.removed) });
+    else store.dispatch({ type: 'AUDIENCE_START' });
   };
 
   const q = currentQuestion(data);

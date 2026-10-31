@@ -63,7 +63,7 @@ Skróty nie działają podczas pisania w polach formularzy ani przy otwartym men
 Uczestnik klika ikonę koła na górze planszy.
 
 - **50:50**: gra melodia, a dokładnie 8 s później znikają dwie błędne odpowiedzi.
-- **Pytanie do publiczności**: gra melodia, a dokładnie 32 s później pojawiają się wyniki A–D. Na razie są losowe i zawsze sumują się do 100%. Prowadzący zamyka okno przyciskiem na pasku.
+- **Pytanie do publiczności**: muzyka gra, a jej druga fraza zapętla się przez cały czas głosowania. Prowadzący liczy głosy przyciskami **+A**, **+B**, **+C**, **+D** na pasku (albo klawiszami 1–4); strzałka cofa ostatni głos. **Zakończ głosowanie** zamienia głosy na procenty (suma 100%), uruchamia animację wykresu i końcowe uderzenie muzyki.
 - **Telefon do przyjaciela**: w pętli gra pierwsze 11 s melodii. Prowadzący klika **Włącz odliczanie**: startuje licznik 30 s i melodia od 12 s. Licznik zmienia się razem z tyknięciami melodii (zegar dostraja się do faktycznego startu dźwięku). Pauza licznika wstrzymuje też muzykę; po 0 melodia gra do końca. Na pasku: pauza / wznowienie licznika, zakończenie rozmowy, zamknięcie.
 
 ## Pytania
@@ -109,7 +109,7 @@ Gra używa wyłącznie plików MP3 z `public/audio/`. Zawsze gra najwyżej jedna
 | „Pokaż odpowiedź” | `correct-answer.mp3` albo `wrong-answer.mp3` |
 | Przerwa po 5. pytaniu | `klakson.mp3` |
 | 50:50 | `fastest-finger.mp3` |
-| Pytanie do publiczności | `ask-the-audience.mp3` |
+| Pytanie do publiczności: pętla w trakcie głosowania, końcowe uderzenie po „Zakończ głosowanie” | `ask-the-audience.mp3` |
 | Telefon do przyjaciela: oczekiwanie (pętla 11 s) | `phone-intro.mp3` (pierwsze 11 s `phone-a-friend.mp3`) |
 | Telefon: „Włącz odliczanie” (od 12 s, razem z licznikiem) | `phone-a-friend.mp3` |
 
