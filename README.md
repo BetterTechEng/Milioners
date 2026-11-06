@@ -17,16 +17,18 @@ Gra w stylu telewizyjnego teleturnieju z pytaniami za coraz większe kwoty. Wszy
 
 Wymagany Node.js 20 lub nowszy.
 
+Najprościej: kliknij dwukrotnie `start.cmd` w folderze projektu. Za pierwszym razem zainstaluje zależności, potem uruchomi grę i otworzy przeglądarkę na http://127.0.0.1:5173/. Zamknij okno konsoli, żeby zatrzymać grę.
+
+Albo w terminalu, w folderze projektu:
+
 ```bash
 npm install
-npm run dev
+npm start
 ```
-
-Otwórz adres wypisany przez Vite.
 
 | Cel | Komenda |
 |---|---|
-| Serwer deweloperski | `npm run dev` |
+| Serwer deweloperski (otwiera przeglądarkę) | `npm start` albo `npm run dev` |
 | Sprawdzenie typów | `npm run typecheck` |
 | Build produkcyjny (`dist/`) | `npm run build` |
 | Podgląd buildu | `npm run preview` |
