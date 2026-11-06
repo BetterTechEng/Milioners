@@ -127,45 +127,42 @@ function Particles({ paused, intensity, gold }: { paused: boolean; intensity: nu
   return <canvas ref={ref} width={1920} height={1080} className="absolute inset-0 pointer-events-none" style={{ mixBlendMode: 'screen' }} />;
 }
 
-/** Original show emblem: gold rings, rays and the show title. */
+/** Show emblem: the host's photo in a gold ring with rotating rays. */
 export function Emblem({ title, size = 340, spinning = true }: { title: string; size?: number; spinning?: boolean }) {
+  // The ring's inner edge sits at radius 153 of the 400-unit viewBox.
+  const photo = (306 / 400) * size;
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 400 400" className="absolute inset-0 w-full h-full drop-shadow-[0_0_40px_rgba(120,150,255,0.6)]">
+      <img
+        src={`${import.meta.env.BASE_URL}luki.webp`}
+        alt={title}
+        draggable={false}
+        className="absolute rounded-full object-cover"
+        style={{ width: photo, height: photo, left: (size - photo) / 2, top: (size - photo) / 2, objectPosition: '50% 35%' }}
+      />
+      <svg viewBox="0 0 400 400" className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_0_40px_rgba(120,150,255,0.6)]">
         <defs>
-          <radialGradient id="em-core" cx="50%" cy="42%" r="60%">
-            <stop offset="0" stopColor="#3550ff" />
-            <stop offset="0.55" stopColor="#101a78" />
-            <stop offset="1" stopColor="#040733" />
-          </radialGradient>
           <linearGradient id="em-gold" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#fff3c4" />
             <stop offset="0.35" stopColor="#f0c75e" />
             <stop offset="0.6" stopColor="#b9821f" />
             <stop offset="1" stopColor="#ffe39a" />
           </linearGradient>
+          <radialGradient id="em-vignette" cx="50%" cy="50%" r="50%">
+            <stop offset="0.7" stopColor="#040733" stopOpacity="0" />
+            <stop offset="1" stopColor="#040733" stopOpacity="0.55" />
+          </radialGradient>
         </defs>
-        <g className={spinning ? 'origin-center' : ''} style={spinning ? { animation: 'spin 60s linear infinite', transformOrigin: '200px 200px' } : undefined}>
+        <g style={spinning ? { animation: 'spin 60s linear infinite', transformOrigin: '200px 200px' } : undefined}>
           {Array.from({ length: 36 }, (_, i) => (
             <rect key={i} x="198" y="6" width="4" height={i % 3 === 0 ? 26 : 14} rx="2" fill="url(#em-gold)" opacity={i % 3 === 0 ? 0.9 : 0.5} transform={`rotate(${i * 10} 200 200)`} />
           ))}
         </g>
-        <circle cx="200" cy="200" r="158" fill="url(#em-core)" stroke="url(#em-gold)" strokeWidth="10" />
-        <circle cx="200" cy="200" r="138" fill="none" stroke="url(#em-gold)" strokeWidth="2" opacity="0.7" />
-        <circle cx="200" cy="200" r="128" fill="none" stroke="#8ea2ff" strokeWidth="1" opacity="0.5" strokeDasharray="4 8" />
-        {[0, 72, 144, 216, 288].map((a) => (
-          <path key={a} d="M200 60 l6 14 15 1 -12 9 4 15 -13 -8 -13 8 4 -15 -12 -9 15 -1z" fill="url(#em-gold)" transform={`rotate(${a} 200 200)`} />
-        ))}
-        <ellipse cx="200" cy="150" rx="110" ry="50" fill="white" opacity="0.07" />
+        <circle cx="200" cy="200" r="153" fill="url(#em-vignette)" />
+        <circle cx="200" cy="200" r="158" fill="none" stroke="url(#em-gold)" strokeWidth="10" />
+        <circle cx="200" cy="200" r="150" fill="none" stroke="url(#em-gold)" strokeWidth="2" opacity="0.8" />
+        <ellipse cx="200" cy="120" rx="110" ry="45" fill="white" opacity="0.08" />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center px-10 text-center">
-        <span
-          className="gold-text font-display font-black uppercase leading-none tracking-wide"
-          style={{ fontSize: size * (title.length > 10 ? 0.1 : 0.13), filter: 'drop-shadow(0 3px 2px rgba(0,0,0,0.7))' }}
-        >
-          {title}
-        </span>
-      </div>
     </div>
   );
 }

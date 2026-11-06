@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { AppData, Settings, ThemeId } from '../types';
 import { store } from '../game/store';
-import { DEFAULT_PRIZE_NAMES, DEFAULT_PRIZES } from '../data/defaults';
 import { Btn, Card, Field, inputCls, Slider, Toggle } from './ui';
 
 export function SettingsTab({ data }: { data: AppData }) {
@@ -71,51 +70,6 @@ export function SettingsTab({ data }: { data: AppData }) {
         <p className="mt-2 text-xs text-blue-300/70">Uczestnika wybierzesz przed startem gry. Jego imię widać na ekranie i w historii.</p>
       </Card>
 
-      <Card title="Nagrody i progi gwarantowane" right={<Btn tone="ghost" onClick={() => set({ prizes: DEFAULT_PRIZES, prizeNames: DEFAULT_PRIZE_NAMES, thresholds: [4, 9], questionCount: 15 })}>Przywróć domyślne</Btn>}>
-        <div className="grid grid-cols-[auto_1fr_110px_auto] items-center gap-x-3 gap-y-1.5">
-          <span />
-          <span className="text-xs font-semibold uppercase text-blue-200/70">Nazwa nagrody</span>
-          <span className="text-xs font-semibold uppercase text-blue-200/70">Kwota</span>
-          <span />
-          {Array.from({ length: s.questionCount }, (_, i) => (
-            <div key={i} className="contents">
-              <span className="w-6 text-right font-display text-sm font-bold text-gold-300">{i + 1}</span>
-              <input
-                className={inputCls}
-                placeholder="(pokaż kwotę)"
-                value={s.prizeNames[i] ?? ''}
-                onChange={(e) => {
-                  const prizeNames = [...s.prizeNames];
-                  while (prizeNames.length <= i) prizeNames.push('');
-                  prizeNames[i] = e.target.value;
-                  set({ prizeNames });
-                }}
-              />
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                value={s.prizes[i] ?? 0}
-                onChange={(e) => {
-                  const prizes = [...s.prizes];
-                  prizes[i] = Math.max(0, Number(e.target.value) || 0);
-                  set({ prizes });
-                }}
-              />
-              <label className="flex items-center gap-1 text-xs text-blue-200" title="Próg gwarantowany">
-                <input
-                  type="checkbox"
-                  checked={s.thresholds.includes(i)}
-                  onChange={(e) => set({ thresholds: e.target.checked ? [...s.thresholds, i].sort((a, b) => a - b) : s.thresholds.filter((t) => t !== i) })}
-                  className="accent-amber-400"
-                />
-                próg
-              </label>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-blue-300/70">Nazwa zastępuje kwotę na drabince. Puste pole = kwota, „-” = brak nagrody na tym poziomie.</p>
-      </Card>
 
       <div className="space-y-4">
         <Card title="Głośność">

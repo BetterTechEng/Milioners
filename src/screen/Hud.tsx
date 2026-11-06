@@ -1,15 +1,15 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, Users, X } from 'lucide-react';
 import type { GameState, LifelineId, Settings } from '../types';
-import { fitFont, lastCorrectLevel } from '../game/rules';
+import { lastCorrectLevel } from '../game/rules';
 
 export function MoneyLadder({
   prizes,
-  settings,
+  settings: _settings,
   g,
 }: {
   prizes: string[];
-  settings: Settings;
+  settings?: Settings;
   g: GameState;
 }) {
   const reached = lastCorrectLevel(g.results);
@@ -20,13 +20,12 @@ export function MoneyLadder({
   const font = rowH > 50 ? 30 : rowH > 40 ? 26 : 20;
 
   return (
-    <div className="absolute" style={{ left: 1490, top: 40, width: 400, bottom: 40 }}>
+    <div className="absolute" style={{ left: 1640, top: 40, width: 240, bottom: 40 }}>
       <div className="absolute inset-0 rounded-[28px] border border-[rgba(var(--line),0.45)] bg-gradient-to-b from-[rgba(10,16,70,0.82)] to-[rgba(3,6,32,0.9)] shadow-[0_0_50px_rgba(var(--beam),0.35),inset_0_0_40px_rgba(var(--beam),0.15)] backdrop-blur-md" />
       <div className="absolute inset-x-4 top-4 bottom-4 flex flex-col-reverse justify-center">
-        {prizes.map((p, i) => {
+        {prizes.map((_, i) => {
           const isCurrent = i === current;
           const passed = i <= reached;
-          const thr = settings.thresholds.includes(i);
           return (
             <div key={i} className="relative flex items-center" style={{ height: rowH }}>
               {isCurrent && (
@@ -54,23 +53,12 @@ export function MoneyLadder({
                 />
               )}
               <span
-                className="relative w-16 pl-5 font-display font-bold"
-                style={{ fontSize: font * 0.8, color: isCurrent ? '#fff' : passed ? '#f5d77a' : '#f0b33f' }}
+                className="relative flex w-full items-center justify-center gap-4 font-display font-black tracking-wider"
+                style={{ fontSize: font * 1.05, color: isCurrent ? '#1b0b00' : passed ? '#f5d77a' : '#f0b33f' }}
               >
+                <span style={{ fontSize: font * 0.6, opacity: passed || isCurrent ? 1 : 0.6 }}>◆</span>
                 {i + 1}
-              </span>
-              <span className="relative mr-2" style={{ fontSize: font * 0.7, color: passed || isCurrent ? '#fff' : '#f0b33f', opacity: passed ? 1 : 0.6 }}>
-                ◆
-              </span>
-              <span
-                className="relative ml-2 whitespace-nowrap font-display font-bold tracking-wide"
-                style={{
-                  fontSize: fitFont(p, font, 13),
-                  color: isCurrent ? '#1b0b00' : thr ? '#ffffff' : passed ? '#f5d77a' : '#f0b33f',
-                  textShadow: thr && !isCurrent ? '0 0 14px rgba(255,255,255,0.7)' : undefined,
-                }}
-              >
-                {p}
+                <span style={{ fontSize: font * 0.6, opacity: passed || isCurrent ? 1 : 0.6 }}>◆</span>
               </span>
             </div>
           );
